@@ -386,25 +386,33 @@ async def upload_file(file: UploadFile = File(...), authorization: str = Header(
     if not user_data.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    ext = file.filename.split(".")[-1] if "." in file.filename else "bin"
-    file_id = str(uuid.uuid4())
-    path = f"waheeba-fashion/products/{file_id}.{ext}"
+    import base64
+    
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
     
     data = await file.read()
-    result = put_object(path, data, file.content_type or "application/octet-stream")
     
+    max_size = 5 * 1024 * 1024
+    if len(data) > max_size:
+        raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+    
+    base64_data = base64.b64encode(data).decode("utf-8")
+    data_url = f"data:{file.content_type};base64,{base64_data}"
+    
+    file_id = str(uuid.uuid4())
     file_doc = {
         "id": file_id,
-        "storage_path": result["path"],
+        "data_url": data_url,
         "original_filename": file.filename,
         "content_type": file.content_type,
-        "size": result["size"],
+        "size": len(data),
         "is_deleted": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    await db.files.insert_one(file_doc)
+    await db.uploaded_files.insert_one(file_doc)
     
-    return {"url": f"/api/files/{result['path']}", "storage_path": result["path"]}
+    return {"url": data_url, "id": file_id, "size": len(data)}
 
 
 @api_router.get("/files/{path:path}")

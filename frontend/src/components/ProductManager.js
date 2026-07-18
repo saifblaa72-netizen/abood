@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Image as ImageIcon, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, X, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice, categories, sizes } from '@/lib/utils';
@@ -21,6 +21,38 @@ const ProductManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState(initialFormState());
+  const [uploadingIndex, setUploadingIndex] = useState(null);
+
+  const handleFileUpload = async (index, file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('يرجى اختيار صورة فقط');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('حجم الصورة يجب أن يكون أقل من 5 ميجا');
+      return;
+    }
+
+    setUploadingIndex(index);
+    try {
+      const uploadForm = new FormData();
+      uploadForm.append('file', file);
+      const response = await axios.post(`${API}/upload`, uploadForm, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      updateImage(index, 'url', response.data.url);
+      toast.success('تم رفع الصورة بنجاح');
+    } catch (error) {
+      toast.error('فشل رفع الصورة');
+      console.error(error);
+    } finally {
+      setUploadingIndex(null);
+    }
+  };
 
   function initialFormState() {
     return {
@@ -359,12 +391,37 @@ const ProductManager = () => {
                         onError={(e) => e.target.style.display = 'none'}
                       />
                     )}
-                    <Input 
-                      value={img.url}
-                      onChange={(e) => updateImage(idx, 'url', e.target.value)}
-                      placeholder="https://example.com/image.jpg"
-                      className="flex-1"
-                    />
+                    <div className="flex-1 space-y-2">
+                      <Input 
+                        value={img.url}
+                        onChange={(e) => updateImage(idx, 'url', e.target.value)}
+                        placeholder="ألصقي رابط الصورة هنا أو استخدمي زر الرفع →"
+                      />
+                      <label 
+                        htmlFor={`file-upload-${idx}`}
+                        className="inline-flex items-center gap-2 text-sm cursor-pointer bg-burgundy-500 hover:bg-burgundy-600 text-white px-3 py-1.5 rounded-md transition-colors font-cairo"
+                      >
+                        {uploadingIndex === idx ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            جاري الرفع...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4" />
+                            رفع صورة من جهازك
+                          </>
+                        )}
+                        <input 
+                          id={`file-upload-${idx}`}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(idx, e.target.files[0])}
+                          disabled={uploadingIndex !== null}
+                        />
+                      </label>
+                    </div>
                     <Button 
                       size="sm" 
                       variant="ghost"
@@ -377,7 +434,7 @@ const ProductManager = () => {
                 ))}
               </div>
               <p className="text-xs text-gray-500 mt-2 font-cairo">
-                💡 نصيحة: يمكنك رفع الصور على imgur.com أو Instagram أو استخدام روابط من Google أو Pinterest
+                💡 يمكنك رفع صورة من جهازك مباشرة (حد أقصى 5 ميجا) أو لصق رابط صورة من الإنترنت
               </p>
             </div>
 

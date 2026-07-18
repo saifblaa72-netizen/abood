@@ -6,7 +6,7 @@ export function cn(...inputs) {
 }
 
 export const formatPrice = (price) => {
-  return `${price.toFixed(2)} ر.س`;
+  return `${price.toFixed(2)} د.أ`;
 };
 
 export const formatDate = (date) => {
