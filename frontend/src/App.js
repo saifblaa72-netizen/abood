@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Chatbot from '@/components/Chatbot';
 import Cart from '@/components/Cart';
+import InstallAppPrompt from '@/components/InstallAppPrompt';
 import Home from '@/pages/Home';
 import Products from '@/pages/Products';
 import ProductDetail from '@/pages/ProductDetail';
@@ -46,6 +47,7 @@ function App() {
             <Footer />
             <Cart open={cartOpen} onClose={() => setCartOpen(false)} />
             <Chatbot />
+            <InstallAppPrompt />
             <a
               href={SOCIAL_LINKS.whatsapp_url}
               target="_blank"

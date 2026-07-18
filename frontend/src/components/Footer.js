@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Phone, Mail, MapPin } from 'lucide-react';
+import { Facebook, Instagram, Phone, MapPin } from 'lucide-react';
 import { SOCIAL_LINKS } from '@/constants/social';
 
 const Footer = () => {
@@ -104,10 +104,6 @@ const Footer = () => {
               <li className="flex items-start gap-3">
                 <Phone className="w-5 h-5 text-burgundy-500 flex-shrink-0 mt-1" />
                 <span>{SOCIAL_LINKS.whatsapp_display}</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-burgundy-500 flex-shrink-0 mt-1" />
-                <span>info@waheebafashion.com</span>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-burgundy-500 flex-shrink-0 mt-1" />

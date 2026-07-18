@@ -14,6 +14,7 @@ const Home = () => {
   const [accessories, setAccessories] = useState([]);
   const [dresses, setDresses] = useState([]);
   const [abayas, setAbayas] = useState([]);
+  const [shawls, setShawls] = useState([]);
   const [trenches, setTrenches] = useState([]);
   const [caps, setCaps] = useState([]);
   const [tracksuits, setTracksuits] = useState([]);
@@ -24,12 +25,13 @@ const Home = () => {
 
   const fetchProducts = async () => {
     try {
-      const [featured, newItems, accs, dr, ab, tr, cp, ts] = await Promise.all([
+      const [featured, newItems, accs, dr, ab, sh, tr, cp, ts] = await Promise.all([
         axios.get(`${API}/products?is_featured=true&limit=4`),
         axios.get(`${API}/products?is_new=true&limit=8`),
         axios.get(`${API}/products?category=accessories&limit=4`),
         axios.get(`${API}/products?category=dresses&limit=4`),
         axios.get(`${API}/products?category=abayas&limit=4`),
+        axios.get(`${API}/products?category=shawls&limit=4`),
         axios.get(`${API}/products?category=trench&limit=4`),
         axios.get(`${API}/products?category=cap&limit=4`),
         axios.get(`${API}/products?category=tracksuit&limit=4`),
@@ -39,6 +41,7 @@ const Home = () => {
       setAccessories(accs.data);
       setDresses(dr.data);
       setAbayas(ab.data);
+      setShawls(sh.data);
       setTrenches(tr.data);
       setCaps(cp.data);
       setTracksuits(ts.data);
@@ -369,23 +372,30 @@ const Home = () => {
         bgClass=""
       />
       <CategorySection 
+        title="الإسدالات" 
+        subtitle="إسدالات ناعمة بلمسة راقية"
+        products={shawls} 
+        categoryValue="shawls"
+      />
+      <CategorySection 
         title="ترنشكوت" 
         subtitle="الأناقة والدفء في تصميم واحد"
         products={trenches} 
         categoryValue="trench"
+        bgClass=""
       />
       <CategorySection 
         title="كاب" 
         subtitle="لمسة عصرية لإطلالتك"
         products={caps} 
         categoryValue="cap"
-        bgClass=""
       />
       <CategorySection 
         title="ترينق" 
         subtitle="راحة وأناقة للإطلالات الكاجوال"
         products={tracksuits} 
         categoryValue="tracksuit"
+        bgClass=""
       />
     </div>
   );

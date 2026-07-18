@@ -1,4 +1,4 @@
-import { Phone, Mail, MapPin, Facebook, Instagram } from 'lucide-react';
+import { Phone, MapPin, Facebook, Instagram } from 'lucide-react';
 import { SOCIAL_LINKS } from '@/constants/social';
 
 const Contact = () => {
@@ -7,7 +7,7 @@ const Contact = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1200px]">
         <h1 className="text-4xl md:text-5xl font-tajawal font-bold text-center mb-12">تواصل معنا</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12 max-w-3xl mx-auto">
           <a 
             href={SOCIAL_LINKS.whatsapp_url}
             target="_blank"
@@ -17,15 +17,6 @@ const Contact = () => {
             <Phone className="w-12 h-12 text-burgundy-500 mx-auto mb-4" />
             <h3 className="font-tajawal font-bold text-xl mb-2">واتس آب</h3>
             <p className="font-cairo text-gray-700" dir="ltr">{SOCIAL_LINKS.whatsapp_display}</p>
-          </a>
-
-          <a 
-            href="mailto:info@waheebafashion.com"
-            className="text-center p-8 bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            <Mail className="w-12 h-12 text-burgundy-500 mx-auto mb-4" />
-            <h3 className="font-tajawal font-bold text-xl mb-2">البريد الإلكتروني</h3>
-            <p className="font-cairo text-gray-700">info@waheebafashion.com</p>
           </a>
 
           <div className="text-center p-8 bg-white rounded-lg shadow">
