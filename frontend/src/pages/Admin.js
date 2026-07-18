@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ADMIN } from '@/constants/testIds';
 import { formatPrice, formatDate, orderStatuses } from '@/lib/utils';
 import ProductManager from '@/components/ProductManager';
+import AdminOrderCard from '@/components/AdminOrderCard';
 import axios from 'axios';
 import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react';
 
@@ -108,23 +109,21 @@ const Admin = () => {
 
           <TabsContent value="orders" className="mt-6">
             <Card className="p-6">
-              <h2 className="text-xl font-tajawal font-bold mb-4">الطلبات الأخيرة</h2>
+              <h2 className="text-xl font-tajawal font-bold mb-4">
+                جميع الطلبات ({orders.length})
+              </h2>
               <div data-testid={ADMIN.ordersList} className="space-y-3">
-                {orders.slice(0, 10).map(order => (
-                  <div key={order.id} className="flex justify-between items-center p-4 border rounded-lg">
-                    <div>
-                      <p className="font-cairo font-semibold">#{order.order_number}</p>
-                      <p className="text-sm text-gray-500">{order.user_name} - {order.user_phone}</p>
-                      <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-burgundy-500">{formatPrice(order.total_amount)}</p>
-                      <span className={`order-status-badge status-${order.status} mt-1 inline-block`}>
-                        {orderStatuses[order.status]}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                {orders.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">لا توجد طلبات</p>
+                ) : (
+                  orders.map(order => (
+                    <AdminOrderCard 
+                      key={order.id} 
+                      order={order}
+                      onStatusChange={fetchOrders}
+                    />
+                  ))
+                )}
               </div>
             </Card>
           </TabsContent>

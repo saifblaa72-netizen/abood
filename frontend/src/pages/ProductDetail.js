@@ -9,7 +9,7 @@ import { formatPrice } from '@/lib/utils';
 import { PRODUCT_DETAIL } from '@/constants/testIds';
 import { SOCIAL_LINKS } from '@/constants/social';
 import { toast } from 'sonner';
-import { ShoppingBag, Share2, Copy } from 'lucide-react';
+import { ShoppingBag, Share2, Copy, Minus, Plus } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -22,6 +22,8 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
 
   const buildShareUrl = () => {
@@ -44,12 +46,6 @@ const ProductDetail = () => {
     try {
       const response = await axios.get(`${API}/products/${id}`);
       setProduct(response.data);
-      if (response.data.available_colors?.length > 0) {
-        setSelectedColor(response.data.available_colors[0]);
-      }
-      if (response.data.available_sizes?.length > 0) {
-        setSelectedSize(response.data.available_sizes[0]);
-      }
     } catch (error) {
       console.error('Failed to fetch product:', error);
       toast.error('فشل تحميل المنتج');
@@ -59,9 +55,13 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!selectedColor || !selectedSize) {
-      toast.error('الرجاء اختيار اللون والمقاس');
-      return;
+    if (!selectedColor) {
+      toast.error('⚠️ الرجاء اختيار اللون قبل الإضافة إلى السلة');
+      return false;
+    }
+    if (!selectedSize) {
+      toast.error('⚠️ الرجاء اختيار المقاس قبل الإضافة إلى السلة');
+      return false;
     }
 
     const variant = product.variants.find(v => 
@@ -69,8 +69,8 @@ const ProductDetail = () => {
     );
 
     if (!variant) {
-      toast.error('هذا المقاس غير متوفر');
-      return;
+      toast.error('هذا اللون بهذا المقاس غير متوفر حالياً');
+      return false;
     }
 
     try {
@@ -81,12 +81,21 @@ const ProductDetail = () => {
         price: product.price,
         color: selectedColor,
         size: selectedSize,
-        quantity: 1,
+        quantity: quantity,
         sku: variant.sku
       });
-      toast.success('تمت إضافة المنتج إلى السلة');
+      toast.success(`تمت إضافة ${quantity} × ${product.name_ar} إلى السلة`);
+      return true;
     } catch (error) {
       toast.error('فشلت إضافة المنتج');
+      return false;
+    }
+  };
+
+  const handleBuyNow = async () => {
+    const success = await handleAddToCart();
+    if (success) {
+      navigate('/checkout');
     }
   };
 
@@ -110,12 +119,48 @@ const ProductDetail = () => {
     <div className="py-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1600px]">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div data-testid={PRODUCT_DETAIL.image}>
-            <img
-              src={product.images[0]?.url || '/placeholder.jpg'}
-              alt={product.name_ar}
-              className="w-full h-auto object-cover rounded-lg"
-            />
+          <div>
+            <div data-testid={PRODUCT_DETAIL.image} className="relative">
+              <img
+                src={product.images[selectedImageIndex]?.url || product.images[0]?.url || '/placeholder.jpg'}
+                alt={product.name_ar}
+                className="w-full aspect-[3/4] object-cover rounded-lg bg-gray-100"
+              />
+              {product.images && product.images.length > 1 && (
+                <div 
+                  data-testid="product-image-count"
+                  className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-cairo"
+                >
+                  {selectedImageIndex + 1} / {product.images.length}
+                </div>
+              )}
+            </div>
+            
+            {product.images && product.images.length > 1 && (
+              <div 
+                data-testid="product-thumbnails"
+                className="grid grid-cols-5 gap-2 mt-4"
+              >
+                {product.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    data-testid={`product-thumbnail-${idx}`}
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedImageIndex === idx 
+                        ? 'border-burgundy-500 scale-95' 
+                        : 'border-transparent hover:border-gray-300'
+                    }`}
+                  >
+                    <img
+                      src={img.url}
+                      alt={`${product.name_ar} ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -155,13 +200,46 @@ const ProductDetail = () => {
 
             <div className="space-y-4 mb-8">
               <div>
-                <label className="block font-tajawal font-semibold mb-2">اللون:</label>
+                <label className="block font-tajawal font-semibold mb-2">
+                  اللون: {selectedColor ? (
+                    <span className="text-burgundy-500 font-bold" data-testid="selected-color-display">{selectedColor}</span>
+                  ) : (
+                    <span className="text-red-500 font-bold" data-testid="selected-color-display">* الرجاء الاختيار</span>
+                  )}
+                </label>
+                <div className="flex flex-wrap gap-2" data-testid="color-swatches">
+                  {product.available_colors?.map(color => {
+                    const variant = product.variants.find(v => v.color === color);
+                    return (
+                      <button
+                        key={color}
+                        data-testid={`color-swatch-${color}`}
+                        type="button"
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-4 py-2 rounded-full border-2 font-cairo text-sm transition-all ${
+                          selectedColor === color 
+                            ? 'border-burgundy-500 bg-burgundy-500 text-white' 
+                            : 'border-gray-300 hover:border-burgundy-500'
+                        }`}
+                        style={variant?.color_hex && selectedColor !== color ? { borderColor: variant.color_hex } : {}}
+                      >
+                        {variant?.color_hex && (
+                          <span 
+                            className="inline-block w-4 h-4 rounded-full ml-2 border border-gray-300 align-middle"
+                            style={{ backgroundColor: variant.color_hex }}
+                          />
+                        )}
+                        {color}
+                      </button>
+                    );
+                  })}
+                </div>
                 <Select 
                   data-testid={PRODUCT_DETAIL.colorSelect}
                   value={selectedColor} 
                   onValueChange={setSelectedColor}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="hidden">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -173,13 +251,36 @@ const ProductDetail = () => {
               </div>
 
               <div>
-                <label className="block font-tajawal font-semibold mb-2">المقاس:</label>
+                <label className="block font-tajawal font-semibold mb-2">
+                  المقاس: {selectedSize ? (
+                    <span className="text-burgundy-500 font-bold" data-testid="selected-size-display">{selectedSize}</span>
+                  ) : (
+                    <span className="text-red-500 font-bold" data-testid="selected-size-display">* الرجاء الاختيار</span>
+                  )}
+                </label>
+                <div className="flex flex-wrap gap-2" data-testid="size-swatches">
+                  {product.available_sizes?.map(size => (
+                    <button
+                      key={size}
+                      data-testid={`size-swatch-${size}`}
+                      type="button"
+                      onClick={() => setSelectedSize(size)}
+                      className={`min-w-[3rem] px-4 py-2 rounded-full border-2 font-cairo font-semibold transition-all ${
+                        selectedSize === size 
+                          ? 'border-burgundy-500 bg-burgundy-500 text-white' 
+                          : 'border-gray-300 hover:border-burgundy-500'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
                 <Select 
                   data-testid={PRODUCT_DETAIL.sizeSelect}
                   value={selectedSize} 
                   onValueChange={setSelectedSize}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="hidden">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -188,6 +289,34 @@ const ProductDetail = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <label className="block font-tajawal font-semibold mb-2">الكمية:</label>
+                <div className="flex items-center gap-3" data-testid="quantity-selector">
+                  <button
+                    data-testid="quantity-decrease"
+                    type="button"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-10 h-10 rounded-full border-2 border-gray-300 hover:border-burgundy-500 flex items-center justify-center transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span 
+                    data-testid="quantity-value"
+                    className="w-12 text-center font-bold text-lg"
+                  >
+                    {quantity}
+                  </span>
+                  <button
+                    data-testid="quantity-increase"
+                    type="button"
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-10 h-10 rounded-full border-2 border-gray-300 hover:border-burgundy-500 flex items-center justify-center transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -202,10 +331,7 @@ const ProductDetail = () => {
               </Button>
               <Button
                 data-testid={PRODUCT_DETAIL.buyNowBtn}
-                onClick={() => {
-                  handleAddToCart();
-                  navigate('/checkout');
-                }}
+                onClick={handleBuyNow}
                 variant="outline"
                 className="flex-1 border-burgundy-500 text-burgundy-500 hover:bg-burgundy-500 hover:text-white text-lg py-6"
               >

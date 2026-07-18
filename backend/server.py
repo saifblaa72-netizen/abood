@@ -398,12 +398,11 @@ async def upload_file(file: UploadFile = File(...), authorization: str = Header(
         raise HTTPException(status_code=400, detail="File size must be less than 5MB")
     
     base64_data = base64.b64encode(data).decode("utf-8")
-    data_url = f"data:{file.content_type};base64,{base64_data}"
     
     file_id = str(uuid.uuid4())
     file_doc = {
         "id": file_id,
-        "data_url": data_url,
+        "base64_data": base64_data,
         "original_filename": file.filename,
         "content_type": file.content_type,
         "size": len(data),
@@ -412,7 +411,22 @@ async def upload_file(file: UploadFile = File(...), authorization: str = Header(
     }
     await db.uploaded_files.insert_one(file_doc)
     
-    return {"url": data_url, "id": file_id, "size": len(data)}
+    return {"url": f"/api/uploads/{file_id}", "id": file_id, "size": len(data)}
+
+
+@api_router.get("/uploads/{file_id}")
+async def get_uploaded_file(file_id: str):
+    import base64
+    file_doc = await db.uploaded_files.find_one({"id": file_id, "is_deleted": False}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    data = base64.b64decode(file_doc["base64_data"])
+    return Response(
+        content=data,
+        media_type=file_doc["content_type"],
+        headers={"Cache-Control": "public, max-age=31536000"}
+    )
 
 
 @api_router.get("/files/{path:path}")
@@ -599,6 +613,7 @@ async def create_order(order_data: OrderCreate, authorization: str = Header(None
         total_amount=total_amount,
         payment_method=order_data.payment_method,
         notes=order_data.notes,
+        preview_service_requested=order_data.preview_service_requested,
         points_earned=points_earned
     )
     

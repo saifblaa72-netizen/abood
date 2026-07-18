@@ -27,7 +27,8 @@ const Checkout = () => {
     address_line: '',
     notes: '',
     payment_method: 'cod',
-    use_loyalty_points: 0
+    use_loyalty_points: 0,
+    preview_service_requested: false
   });
 
   const deliveryFee = 30;
@@ -63,7 +64,8 @@ const Checkout = () => {
         items: cart.items,
         payment_method: formData.payment_method,
         notes: formData.notes,
-        use_loyalty_points: parseInt(formData.use_loyalty_points) || 0
+        use_loyalty_points: parseInt(formData.use_loyalty_points) || 0,
+        preview_service_requested: formData.preview_service_requested
       };
 
       const response = await axios.post(`${API}/orders`, orderData, {
@@ -157,6 +159,30 @@ const Checkout = () => {
                     <Label htmlFor="cod" className="font-cairo">الدفع عند الاستلام</Label>
                   </div>
                 </RadioGroup>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6 border-2 border-burgundy-500/20">
+                <h2 className="text-xl font-tajawal font-bold mb-2">خدمة المعاينة قبل الدفع</h2>
+                <p className="text-sm text-gray-600 font-cairo mb-4">
+                  تتيح لك خدمة المعاينة فحص المنتج قبل استلامه ودفع قيمته
+                </p>
+                <label className="flex items-start gap-3 cursor-pointer p-3 bg-brand-gold/5 rounded-lg hover:bg-brand-gold/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    data-testid="preview-service-checkbox"
+                    checked={formData.preview_service_requested}
+                    onChange={(e) => setFormData({...formData, preview_service_requested: e.target.checked})}
+                    className="mt-1 w-5 h-5 accent-burgundy-500 cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-cairo font-semibold text-brand-black block">
+                      أرغب بخدمة المعاينة عند التوصيل
+                    </span>
+                    <span className="text-sm text-gray-600 font-cairo">
+                      سيتيح لك المندوب معاينة المنتج قبل الدفع النهائي
+                    </span>
+                  </div>
+                </label>
               </div>
 
               {user && user.loyalty_points > 0 && (

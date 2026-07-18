@@ -142,6 +142,7 @@ class Order(BaseModel):
     payment_method: str
     status: str = "pending"
     notes: str = ""
+    preview_service_requested: bool = False
     points_earned: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -154,6 +155,7 @@ class OrderCreate(BaseModel):
     payment_method: str
     notes: str = ""
     use_loyalty_points: int = 0
+    preview_service_requested: bool = False
 
 
 class DiscountCode(BaseModel):

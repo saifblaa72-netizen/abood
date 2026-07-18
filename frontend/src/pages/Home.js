@@ -128,7 +128,7 @@ const Home = () => {
         data-testid={HOME.heroSection}
         className="hero-gradient relative h-[600px] flex items-center"
         style={{
-          backgroundImage: 'url(https://images.pexels.com/photos/28232246/pexels-photo-28232246.jpeg)',
+          backgroundImage: 'url(https://customer-assets-m6fa6gv7.emergentagent.net/job_dress-gallery-87/artifacts/0ztnhr4d_%D8%AA%D8%B5%D9%85%D9%8A%D9%85%20%D8%A8%D8%AF%D9%88%D9%86%20%D8%B9%D9%86%D9%88%D8%A7%D9%86%20%2812%29.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}

@@ -44,7 +44,10 @@ const ProductManager = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      updateImage(index, 'url', response.data.url);
+      const fullUrl = response.data.url.startsWith('http') 
+        ? response.data.url 
+        : `${process.env.REACT_APP_BACKEND_URL}${response.data.url}`;
+      updateImage(index, 'url', fullUrl);
       toast.success('تم رفع الصورة بنجاح');
     } catch (error) {
       toast.error('فشل رفع الصورة');
