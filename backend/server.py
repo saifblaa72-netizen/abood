@@ -54,7 +54,7 @@ def create_token(user_id: str, email: str, is_admin: bool) -> str:
 def verify_token(token: str) -> dict:
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-    except:
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
@@ -339,7 +339,7 @@ async def add_to_cart(item: CartItem, session_id: Optional[str] = None, authoriz
         try:
             user_data = await get_current_user(authorization)
             user_id = user_data["user_id"]
-        except:
+        except Exception:
             pass
     
     if not user_id and not session_id:
@@ -388,7 +388,7 @@ async def get_cart(session_id: Optional[str] = None, authorization: str = Header
         try:
             user_data = await get_current_user(authorization)
             user_id = user_data["user_id"]
-        except:
+        except Exception:
             pass
     
     query = {"user_id": user_id} if user_id else {"session_id": session_id}
@@ -414,7 +414,7 @@ async def update_cart_item(
         try:
             user_data = await get_current_user(authorization)
             user_id = user_data["user_id"]
-        except:
+        except Exception:
             pass
     
     query = {"user_id": user_id} if user_id else {"session_id": session_id}
@@ -458,7 +458,7 @@ async def clear_cart(session_id: Optional[str] = None, authorization: str = Head
         try:
             user_data = await get_current_user(authorization)
             user_id = user_data["user_id"]
-        except:
+        except Exception:
             pass
     
     query = {"user_id": user_id} if user_id else {"session_id": session_id}
