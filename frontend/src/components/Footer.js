@@ -7,9 +7,11 @@ const Footer = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1600px] py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           <div>
-            <h3 className="text-2xl font-tajawal font-bold text-burgundy-500 mb-6">
-              وهيبة فاشن
-            </h3>
+            <img 
+              src="/logo.png" 
+              alt="وهيبة فاشن" 
+              className="h-20 w-auto object-contain mb-6 bg-white/5 p-3 rounded-lg"
+            />
             <p className="text-gray-300 font-cairo leading-relaxed mb-6">
               متجر إلكتروني للملابس النسائية العصرية والأنيقة بأعلى معايير الجودة والأناقة.
             </p>

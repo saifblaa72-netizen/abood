@@ -24,9 +24,11 @@ const Navbar = ({ onCartOpen }) => {
             data-testid={NAV.logo}
             className="flex items-center gap-3"
           >
-            <div className="text-2xl md:text-3xl font-tajawal font-bold text-burgundy-500">
-              وهيبة فاشن
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="وهيبة فاشن" 
+              className="h-14 md:h-16 w-auto object-contain"
+            />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

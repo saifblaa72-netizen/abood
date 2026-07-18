@@ -36,6 +36,13 @@ const Login = () => {
     <div className="py-12">
       <div className="container mx-auto px-4 max-w-md">
         <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="flex justify-center mb-6">
+            <img 
+              src="/logo.png" 
+              alt="وهيبة فاشن" 
+              className="h-24 w-auto object-contain"
+            />
+          </div>
           <h1 className="text-3xl font-tajawal font-bold text-center mb-8">
             {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
           </h1>
