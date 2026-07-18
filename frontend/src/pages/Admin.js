@@ -1,0 +1,145 @@
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ADMIN } from '@/constants/testIds';
+import { formatPrice, formatDate, orderStatuses } from '@/lib/utils';
+import axios from 'axios';
+import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const Admin = () => {
+  const { user, token, loading } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && (!user || !user.is_admin)) {
+      navigate('/');
+    } else if (user && user.is_admin) {
+      fetchStats();
+      fetchOrders();
+    }
+  }, [user, loading]);
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get(`${API}/orders`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrders(response.data);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    }
+  };
+
+  if (loading) return <div className="py-12 text-center">جاري التحميل...</div>;
+  if (!user || !user.is_admin) return null;
+
+  return (
+    <div data-testid={ADMIN.dashboard} className="py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1600px]">
+        <h1 className="text-4xl font-tajawal font-bold mb-8">لوحة التحكم</h1>
+
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-cairo">إجمالي المنتجات</p>
+                  <p className="text-3xl font-bold">{stats.total_products}</p>
+                </div>
+                <Package className="w-12 h-12 text-burgundy-500" />
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-cairo">إجمالي الطلبات</p>
+                  <p className="text-3xl font-bold">{stats.total_orders}</p>
+                </div>
+                <ShoppingCart className="w-12 h-12 text-burgundy-500" />
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-cairo">إجمالي العملاء</p>
+                  <p className="text-3xl font-bold">{stats.total_users}</p>
+                </div>
+                <Users className="w-12 h-12 text-burgundy-500" />
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-cairo">إجمالي المبيعات</p>
+                  <p className="text-2xl font-bold">{formatPrice(stats.total_revenue)}</p>
+                </div>
+                <DollarSign className="w-12 h-12 text-burgundy-500" />
+              </div>
+            </Card>
+          </div>
+        )}
+
+        <Tabs defaultValue="orders" className="w-full">
+          <TabsList>
+            <TabsTrigger data-testid={ADMIN.ordersTab} value="orders">الطلبات</TabsTrigger>
+            <TabsTrigger data-testid={ADMIN.productsTab} value="products">المنتجات</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="orders" className="mt-6">
+            <Card className="p-6">
+              <h2 className="text-xl font-tajawal font-bold mb-4">الطلبات الأخيرة</h2>
+              <div data-testid={ADMIN.ordersList} className="space-y-3">
+                {orders.slice(0, 10).map(order => (
+                  <div key={order.id} className="flex justify-between items-center p-4 border rounded-lg">
+                    <div>
+                      <p className="font-cairo font-semibold">#{order.order_number}</p>
+                      <p className="text-sm text-gray-500">{order.user_name} - {order.user_phone}</p>
+                      <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-burgundy-500">{formatPrice(order.total_amount)}</p>
+                      <span className={`order-status-badge status-${order.status} mt-1 inline-block`}>
+                        {orderStatuses[order.status]}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="products" className="mt-6">
+            <Card className="p-6">
+              <h2 className="text-xl font-tajawal font-bold mb-4">إدارة المنتجات</h2>
+              <p className="text-gray-500 font-cairo">
+                يمكنك إدارة المنتجات عبر الـ API مباشرة
+              </p>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default Admin;

@@ -1,34 +1,145 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+.App {
+  min-height: 100vh;
+  font-family: 'Cairo', sans-serif;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.hero-gradient {
+  background: linear-gradient(135deg, rgba(114, 47, 55, 0.05) 0%, rgba(10, 10, 10, 0.02) 100%);
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.product-card {
+  transition: transform 0.3s ease-out;
 }
 
-.App-link {
-    color: #61dafb;
+.product-card:hover {
+  transform: translateY(-4px);
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.product-image-container {
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.product-image {
+  transition: transform 0.5s ease-out;
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.05);
+}
+
+.glass-nav {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chatbot-fab {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 1000;
+  box-shadow: 0 8px 30px rgba(114, 47, 55, 0.3);
+}
+
+.whatsapp-fab {
+  position: fixed;
+  bottom: 88px;
+  left: 24px;
+  z-index: 1000;
+  box-shadow: 0 8px 30px rgba(37, 211, 102, 0.3);
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.6s ease-out;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loyalty-badge {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D58D 100%);
+  color: #0A0A0A;
+  font-weight: 600;
+}
+
+.order-status-badge {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-pending {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.status-confirmed {
+  background: #DBEAFE;
+  color: #1E40AF;
+}
+
+.status-processing {
+  background: #E0E7FF;
+  color: #4338CA;
+}
+
+.status-shipped {
+  background: #DDD6FE;
+  color: #5B21B6;
+}
+
+.status-delivered {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.status-cancelled {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.filter-sidebar {
+  border-left: 1px solid #E5E5E5;
+}
+
+.cart-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 400px;
+  background: white;
+  box-shadow: -4px 0 30px rgba(0, 0, 0, 0.1);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-out;
+  z-index: 1001;
+}
+
+.cart-drawer.open {
+  transform: translateX(0);
+}
+
+.cart-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out;
+}
+
+.cart-overlay.open {
+  opacity: 1;
+  pointer-events: all;
 }
