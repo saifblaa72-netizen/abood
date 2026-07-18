@@ -40,13 +40,10 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
-  const register = async (email, full_name, phone, password) => {
-    const response = await axios.post(`${API}/auth/register`, {
-      email,
-      full_name,
-      phone,
-      password
-    });
+  const register = async (email, full_name, phone, password, referral_code = null) => {
+    const payload = { email, full_name, phone, password };
+    if (referral_code) payload.referral_code = referral_code;
+    const response = await axios.post(`${API}/auth/register`, payload);
     setToken(response.data.token);
     setUser(response.data.user);
     localStorage.setItem('token', response.data.token);

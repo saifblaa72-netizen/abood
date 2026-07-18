@@ -38,8 +38,20 @@ logger = logging.getLogger(__name__)
 LOYALTY_POINTS_CONFIG = {
     "points_per_amount": 10,
     "points_value": 1,
-    "welcome_bonus": 50
+    "welcome_bonus": 50,
+    "referrer_bonus": 100,
+    "referred_bonus": 50
 }
+
+
+def generate_referral_code(full_name: str) -> str:
+    """Generate a unique referral code from user name."""
+    import re
+    clean_name = re.sub(r'[^a-zA-Z\u0600-\u06FF]', '', full_name).upper()[:4]
+    if not clean_name:
+        clean_name = "USER"
+    suffix = str(uuid.uuid4())[:6].upper()
+    return f"{clean_name}{suffix}"
 
 DELIVERY_FEES = {
     "default": 30.0
@@ -105,18 +117,41 @@ async def register(user_data: UserRegister):
         raise HTTPException(status_code=400, detail="Email already registered")
     
     password_hash = bcrypt.hashpw(user_data.password.encode(), bcrypt.gensalt()).decode()
+    
+    # Generate unique referral code
+    while True:
+        ref_code = generate_referral_code(user_data.full_name)
+        exists = await db.users.find_one({"referral_code": ref_code})
+        if not exists:
+            break
+    
+    welcome_points = LOYALTY_POINTS_CONFIG["welcome_bonus"]
+    referrer_user = None
+    
+    # Validate referral code if provided
+    if user_data.referral_code:
+        referrer_user = await db.users.find_one(
+            {"referral_code": user_data.referral_code.upper().strip()},
+            {"_id": 0}
+        )
+        if referrer_user:
+            welcome_points += LOYALTY_POINTS_CONFIG["referred_bonus"]
+    
     user = User(
         email=user_data.email,
         full_name=user_data.full_name,
         phone=user_data.phone,
         password_hash=password_hash,
-        loyalty_points=LOYALTY_POINTS_CONFIG["welcome_bonus"]
+        loyalty_points=welcome_points,
+        referral_code=ref_code,
+        referred_by=referrer_user["id"] if referrer_user else None
     )
     
     doc = user.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     await db.users.insert_one(doc)
     
+    # Welcome bonus transaction
     transaction = LoyaltyTransaction(
         user_id=user.id,
         points=LOYALTY_POINTS_CONFIG["welcome_bonus"],
@@ -127,6 +162,37 @@ async def register(user_data: UserRegister):
     trans_doc['created_at'] = trans_doc['created_at'].isoformat()
     await db.loyalty_transactions.insert_one(trans_doc)
     
+    # Handle referral rewards
+    if referrer_user:
+        # Bonus for new user
+        referred_trans = LoyaltyTransaction(
+            user_id=user.id,
+            points=LOYALTY_POINTS_CONFIG["referred_bonus"],
+            transaction_type="referral_signup",
+            description=f"مكافأة استخدام كود الإحالة {user_data.referral_code}"
+        )
+        rt_doc = referred_trans.model_dump()
+        rt_doc['created_at'] = rt_doc['created_at'].isoformat()
+        await db.loyalty_transactions.insert_one(rt_doc)
+        
+        # Bonus for referrer
+        referrer_bonus = LOYALTY_POINTS_CONFIG["referrer_bonus"]
+        await db.users.update_one(
+            {"id": referrer_user["id"]},
+            {
+                "$inc": {"loyalty_points": referrer_bonus, "referral_count": 1}
+            }
+        )
+        referrer_trans = LoyaltyTransaction(
+            user_id=referrer_user["id"],
+            points=referrer_bonus,
+            transaction_type="referral_reward",
+            description=f"مكافأة إحالة صديق: {user_data.full_name}"
+        )
+        rtr_doc = referrer_trans.model_dump()
+        rtr_doc['created_at'] = rtr_doc['created_at'].isoformat()
+        await db.loyalty_transactions.insert_one(rtr_doc)
+    
     token = create_token(user.id, user.email, user.is_admin)
     return {
         "token": token,
@@ -136,7 +202,9 @@ async def register(user_data: UserRegister):
             "full_name": user.full_name,
             "phone": user.phone,
             "loyalty_points": user.loyalty_points,
-            "is_admin": user.is_admin
+            "is_admin": user.is_admin,
+            "referral_code": user.referral_code,
+            "referral_count": user.referral_count
         }
     }
 
@@ -159,8 +227,25 @@ async def login(credentials: UserLogin):
             "full_name": user_doc["full_name"],
             "phone": user_doc["phone"],
             "loyalty_points": user_doc.get("loyalty_points", 0),
-            "is_admin": user_doc.get("is_admin", False)
+            "is_admin": user_doc.get("is_admin", False),
+            "referral_code": user_doc.get("referral_code", ""),
+            "referral_count": user_doc.get("referral_count", 0)
         }
+    }
+
+
+@api_router.get("/referral/validate/{code}")
+async def validate_referral_code(code: str):
+    user_doc = await db.users.find_one(
+        {"referral_code": code.upper().strip()},
+        {"_id": 0, "full_name": 1, "referral_code": 1}
+    )
+    if not user_doc:
+        return {"valid": False}
+    return {
+        "valid": True,
+        "referrer_name": user_doc["full_name"],
+        "bonus_points": LOYALTY_POINTS_CONFIG["referred_bonus"]
     }
 
 

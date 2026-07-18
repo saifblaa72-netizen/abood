@@ -76,6 +76,9 @@ class User(BaseModel):
     loyalty_points: int = 0
     total_spent: float = 0.0
     is_admin: bool = False
+    referral_code: str = ""
+    referred_by: Optional[str] = None
+    referral_count: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -84,6 +87,7 @@ class UserRegister(BaseModel):
     full_name: str
     phone: str
     password: str
+    referral_code: Optional[str] = None
 
 
 class UserLogin(BaseModel):

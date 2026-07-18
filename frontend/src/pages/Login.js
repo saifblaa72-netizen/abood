@@ -1,20 +1,63 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { AUTH } from '@/constants/testIds';
 import { toast } from 'sonner';
+import { Gift, CheckCircle2 } from 'lucide-react';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Login = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const refFromUrl = searchParams.get('ref') || localStorage.getItem('pending_ref');
+  
+  const [isLogin, setIsLogin] = useState(!refFromUrl);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [referralCode, setReferralCode] = useState(refFromUrl || '');
+  const [referralInfo, setReferralInfo] = useState(null);
   const { login, register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (refFromUrl) {
+      localStorage.setItem('pending_ref', refFromUrl);
+      validateReferral(refFromUrl);
+    }
+  }, []);
+
+  const validateReferral = async (code) => {
+    if (!code) {
+      setReferralInfo(null);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/referral/validate/${code}`);
+      if (response.data.valid) {
+        setReferralInfo(response.data);
+      } else {
+        setReferralInfo(null);
+      }
+    } catch {
+      setReferralInfo(null);
+    }
+  };
+
+  const handleReferralChange = (e) => {
+    const code = e.target.value.toUpperCase();
+    setReferralCode(code);
+    if (code.length >= 6) {
+      validateReferral(code);
+    } else {
+      setReferralInfo(null);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,8 +66,9 @@ const Login = () => {
         await login(email, password);
         toast.success('تم تسجيل الدخول بنجاح');
       } else {
-        await register(email, fullName, phone, password);
+        await register(email, fullName, phone, password, referralCode || null);
         toast.success('تم إنشاء الحساب بنجاح');
+        localStorage.removeItem('pending_ref');
       }
       navigate('/');
     } catch (error) {
@@ -46,6 +90,22 @@ const Login = () => {
           <h1 className="text-3xl font-tajawal font-bold text-center mb-8">
             {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
           </h1>
+
+          {!isLogin && referralInfo && (
+            <div className="mb-6 p-4 bg-brand-gold/10 border border-brand-gold rounded-lg">
+              <div className="flex items-center gap-2 text-brand-black">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="font-cairo font-bold">
+                    تمت الإحالة من: {referralInfo.referrer_name}
+                  </p>
+                  <p className="text-sm font-cairo text-gray-700">
+                    ستحصلين على {referralInfo.bonus_points} نقطة إضافية عند التسجيل! 🎁
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form 
             data-testid={isLogin ? AUTH.loginForm : AUTH.registerForm}
@@ -96,6 +156,25 @@ const Login = () => {
                 required
               />
             </div>
+
+            {!isLogin && (
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-burgundy-500" />
+                  كود الإحالة (اختياري)
+                </Label>
+                <Input
+                  data-testid="auth-referral-input"
+                  value={referralCode}
+                  onChange={handleReferralChange}
+                  placeholder="أدخلي كود صديقة لتحصلي على نقاط إضافية"
+                  className="uppercase"
+                />
+                {referralCode && !referralInfo && referralCode.length >= 6 && (
+                  <p className="text-xs text-red-500 mt-1">كود غير صالح</p>
+                )}
+              </div>
+            )}
 
             <Button
               data-testid={AUTH.submitBtn}

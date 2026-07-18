@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import axios from 'axios';
 import { formatPrice } from '@/lib/utils';
 import { PRODUCT_DETAIL } from '@/constants/testIds';
@@ -15,14 +16,28 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const buildShareUrl = () => {
+    const baseUrl = `${window.location.origin}/products/${id}`;
+    if (user?.referral_code) {
+      return `${baseUrl}?ref=${user.referral_code}`;
+    }
+    return baseUrl;
+  };
+
   useEffect(() => {
     fetchProduct();
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      localStorage.setItem('pending_ref', refCode);
+    }
   }, [id]);
 
   const fetchProduct = async () => {
@@ -204,7 +219,7 @@ const ProductDetail = () => {
                 
                 <a
                   data-testid="share-whatsapp-btn"
-                  href={`https://wa.me/?text=${encodeURIComponent(`✨ شوفي هذا المنتج الرائع من وهيبة فاشن ✨\n\n${product.name_ar}\n💰 السعر: ${formatPrice(product.price)}\n\n🔗 ${window.location.href}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`✨ شوفي هذا المنتج الرائع من وهيبة فاشن ✨\n\n${product.name_ar}\n💰 السعر: ${formatPrice(product.price)}\n\n🔗 ${buildShareUrl()}${user?.referral_code ? '\n\n🎁 استخدمي كود الإحالة ' + user.referral_code + ' عند التسجيل للحصول على 50 نقطة!' : ''}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-cairo font-semibold px-4 py-2 rounded-full transition-all duration-200 hover:scale-105"
@@ -218,17 +233,18 @@ const ProductDetail = () => {
                 <button
                   data-testid="share-native-btn"
                   onClick={async () => {
+                    const shareUrl = buildShareUrl();
                     const shareData = {
                       title: product.name_ar,
                       text: `${product.name_ar} - ${formatPrice(product.price)}`,
-                      url: window.location.href
+                      url: shareUrl
                     };
                     if (navigator.share) {
                       try {
                         await navigator.share(shareData);
                       } catch (err) {}
                     } else {
-                      navigator.clipboard.writeText(window.location.href);
+                      navigator.clipboard.writeText(shareUrl);
                       toast.success('تم نسخ رابط المنتج');
                     }
                   }}
@@ -241,7 +257,7 @@ const ProductDetail = () => {
                 <button
                   data-testid="copy-link-btn"
                   onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
+                    navigator.clipboard.writeText(buildShareUrl());
                     toast.success('تم نسخ الرابط');
                   }}
                   className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-cairo font-semibold px-4 py-2 rounded-full transition-all duration-200 hover:scale-105"
@@ -250,6 +266,12 @@ const ProductDetail = () => {
                   نسخ الرابط
                 </button>
               </div>
+
+              {user?.referral_code && (
+                <p className="text-sm text-brand-gold font-cairo font-semibold">
+                  💡 المشاركة تحتوي على كود الإحالة الخاص بك - اكسبي نقاط عند شراء صديقاتك!
+                </p>
+              )}
 
               <a
                 data-testid={PRODUCT_DETAIL.whatsappBtn}
