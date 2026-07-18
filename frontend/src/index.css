@@ -39,6 +39,29 @@ code {
         --input: 0 0% 89.8%;
         --ring: 349 43% 32%;
         --radius: 0.5rem;
+        --brand-white-bg: 0 0% 98%;
+        --brand-black-text: 0 0% 6%;
+    }
+    .dark {
+        --background: 0 0% 8%;
+        --foreground: 0 0% 96%;
+        --card: 0 0% 12%;
+        --card-foreground: 0 0% 96%;
+        --popover: 0 0% 12%;
+        --popover-foreground: 0 0% 96%;
+        --primary: 349 55% 45%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 0 0% 15%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 0 0% 15%;
+        --muted-foreground: 0 0% 65%;
+        --accent: 43 74% 53%;
+        --accent-foreground: 0 0% 9%;
+        --destructive: 0 62.8% 45%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 20%;
+        --input: 0 0% 20%;
+        --ring: 349 55% 45%;
     }
 }
 

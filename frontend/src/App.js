@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -25,9 +26,10 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false);
 
   return (
-    <AuthProvider>
-      <CartProvider>
-        <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <BrowserRouter>
           <div className="App min-h-screen flex flex-col">
             <Navbar onCartOpen={() => setCartOpen(true)} />
             <main className="flex-1">
@@ -63,6 +65,7 @@ function App() {
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
 
