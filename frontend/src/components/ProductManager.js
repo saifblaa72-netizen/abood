@@ -22,6 +22,7 @@ const ProductManager = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState(initialFormState());
   const [uploadingIndex, setUploadingIndex] = useState(null);
+  const [quickAdd, setQuickAdd] = useState({ color: '', color_hex: '#722F37', sizes: [], stock: 10 });
 
   const handleFileUpload = async (index, file) => {
     if (!file) return;
@@ -122,7 +123,12 @@ const ProductManager = () => {
     }
 
     const validImages = formData.images.filter(i => i.url);
-    const validVariants = formData.variants.filter(v => v.color && v.size);
+    const validVariants = formData.variants.filter(v => v.color && v.color.trim() && v.size);
+
+    if (validVariants.length === 0) {
+      toast.error('⚠️ يجب إضافة لون ومقاس واحد على الأقل للمنتج (اكتبي اسم اللون ثم اختاري المقاس)');
+      return;
+    }
 
     const payload = {
       ...formData,
@@ -132,8 +138,9 @@ const ProductManager = () => {
       images: validImages,
       variants: validVariants.map(v => ({
         ...v,
+        color: v.color.trim(),
         stock: parseInt(v.stock) || 0,
-        sku: v.sku || `${formData.category.toUpperCase()}-${v.color}-${v.size}-${Date.now()}`
+        sku: v.sku || `${formData.category.toUpperCase()}-${v.color.trim()}-${v.size}-${Date.now()}`
       }))
     };
 
@@ -147,7 +154,7 @@ const ProductManager = () => {
         await axios.post(`${API}/products`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        toast.success('تمت إضافة المنتج بنجاح');
+        toast.success(`تمت إضافة المنتج بنجاح مع ${validVariants.length} لون/مقاس`);
       }
       setDialogOpen(false);
       fetchProducts();
@@ -199,6 +206,38 @@ const ProductManager = () => {
     const newVariants = [...formData.variants];
     newVariants[index] = { ...newVariants[index], [field]: value };
     setFormData({ ...formData, variants: newVariants });
+  };
+
+  const applyQuickAdd = () => {
+    if (!quickAdd.color.trim()) {
+      toast.error('اكتبي اسم اللون أولاً');
+      return;
+    }
+    if (quickAdd.sizes.length === 0) {
+      toast.error('اختاري مقاس واحد على الأقل');
+      return;
+    }
+    const newVariants = quickAdd.sizes.map(size => ({
+      color: quickAdd.color.trim(),
+      color_hex: quickAdd.color_hex,
+      size,
+      stock: parseInt(quickAdd.stock) || 10,
+      sku: ''
+    }));
+    // Remove empty first variant if it exists
+    const existingVariants = formData.variants.filter(v => v.color && v.color.trim());
+    setFormData({ ...formData, variants: [...existingVariants, ...newVariants] });
+    toast.success(`تمت إضافة ${newVariants.length} مقاس بلون ${quickAdd.color}`);
+    setQuickAdd({ color: '', color_hex: '#722F37', sizes: [], stock: 10 });
+  };
+
+  const toggleQuickSize = (size) => {
+    setQuickAdd(prev => ({
+      ...prev,
+      sizes: prev.sizes.includes(size)
+        ? prev.sizes.filter(s => s !== size)
+        : [...prev.sizes, size]
+    }));
   };
 
   return (
@@ -443,19 +482,87 @@ const ProductManager = () => {
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <Label>الألوان والمقاسات المتوفرة *</Label>
-                <Button size="sm" variant="outline" onClick={addVariant}>
-                  <Plus className="w-3 h-3 ml-1" /> إضافة
+                <Label className="text-base">الألوان والمقاسات المتوفرة * (مطلوب)</Label>
+                <Button size="sm" variant="outline" onClick={addVariant} data-testid="admin-add-variant-btn">
+                  <Plus className="w-3 h-3 ml-1" /> صف جديد
                 </Button>
               </div>
+
+              <div className="bg-burgundy-500/5 border-2 border-dashed border-burgundy-500/40 rounded-lg p-4 mb-4">
+                <p className="font-cairo font-bold text-burgundy-500 mb-3">
+                  ⚡ إضافة سريعة (لون واحد بعدة مقاسات)
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                  <div className="md:col-span-2">
+                    <Label className="text-xs">اسم اللون</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        data-testid="quick-add-color-input"
+                        value={quickAdd.color}
+                        onChange={(e) => setQuickAdd({...quickAdd, color: e.target.value})}
+                        placeholder="مثل: خمري، أسود، أبيض"
+                      />
+                      <input
+                        type="color"
+                        value={quickAdd.color_hex}
+                        onChange={(e) => setQuickAdd({...quickAdd, color_hex: e.target.value})}
+                        className="w-10 h-10 rounded cursor-pointer border"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">الكمية لكل مقاس</Label>
+                    <Input
+                      type="number"
+                      value={quickAdd.stock}
+                      onChange={(e) => setQuickAdd({...quickAdd, stock: e.target.value})}
+                      placeholder="10"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      onClick={applyQuickAdd}
+                      data-testid="quick-add-apply-btn"
+                      className="w-full bg-burgundy-500 hover:bg-burgundy-600"
+                    >
+                      <Plus className="w-4 h-4 ml-1" />
+                      إضافة الكل
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">اختاري المقاسات المتوفرة بهذا اللون:</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {[...sizes, 'واحد'].map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        data-testid={`quick-add-size-${s}`}
+                        onClick={() => toggleQuickSize(s)}
+                        className={`px-4 py-2 rounded-full border-2 font-cairo font-bold text-sm transition-all ${
+                          quickAdd.sizes.includes(s)
+                            ? 'bg-burgundy-500 text-white border-burgundy-500'
+                            : 'bg-white border-gray-300 hover:border-burgundy-500'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
+                <p className="text-xs text-gray-500 font-cairo">أو أضيفي الصفوف يدوياً (كل صف = لون + مقاس واحد):</p>
                 {formData.variants.map((v, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
+                  <div key={idx} className="flex gap-2 items-center" data-testid={`variant-row-${idx}`}>
                     <Input 
+                      data-testid={`variant-color-${idx}`}
                       value={v.color}
                       onChange={(e) => updateVariant(idx, 'color', e.target.value)}
-                      placeholder="اللون (مثل: خمري)"
-                      className="w-32"
+                      placeholder="* اللون (مطلوب)"
+                      className={`w-32 ${!v.color ? 'border-red-400 bg-red-50' : ''}`}
                     />
                     <input 
                       type="color"
@@ -467,7 +574,7 @@ const ProductManager = () => {
                       value={v.size}
                       onValueChange={(val) => updateVariant(idx, 'size', val)}
                     >
-                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-24" data-testid={`variant-size-${idx}`}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {[...sizes, 'واحد'].map(s => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -492,6 +599,11 @@ const ProductManager = () => {
                   </div>
                 ))}
               </div>
+              {formData.variants.filter(v => v.color && v.color.trim()).length === 0 && (
+                <p className="text-xs text-red-600 font-cairo font-bold mt-2">
+                  ⚠️ يجب إضافة لون ومقاس واحد على الأقل (اكتبي اسم اللون في خانة "اللون")
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4 border-t">
