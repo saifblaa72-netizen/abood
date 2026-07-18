@@ -22,6 +22,9 @@ export const categories = [
   { value: 'abayas', label: 'عبايات' },
   { value: 'shawls', label: 'إسدالات' },
   { value: 'sets', label: 'أطقم' },
+  { value: 'trench', label: 'ترنشكوت' },
+  { value: 'cap', label: 'كاب' },
+  { value: 'tracksuit', label: 'ترينق' },
   { value: 'accessories', label: 'إكسسوارات' },
 ];
 

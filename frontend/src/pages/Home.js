@@ -12,6 +12,11 @@ const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [newProducts, setNewProducts] = useState([]);
   const [accessories, setAccessories] = useState([]);
+  const [dresses, setDresses] = useState([]);
+  const [abayas, setAbayas] = useState([]);
+  const [trenches, setTrenches] = useState([]);
+  const [caps, setCaps] = useState([]);
+  const [tracksuits, setTracksuits] = useState([]);
 
   useEffect(() => {
     fetchProducts();
@@ -19,17 +24,99 @@ const Home = () => {
 
   const fetchProducts = async () => {
     try {
-      const [featured, newItems, accs] = await Promise.all([
+      const [featured, newItems, accs, dr, ab, tr, cp, ts] = await Promise.all([
         axios.get(`${API}/products?is_featured=true&limit=4`),
         axios.get(`${API}/products?is_new=true&limit=8`),
-        axios.get(`${API}/products?category=accessories&limit=4`)
+        axios.get(`${API}/products?category=accessories&limit=4`),
+        axios.get(`${API}/products?category=dresses&limit=4`),
+        axios.get(`${API}/products?category=abayas&limit=4`),
+        axios.get(`${API}/products?category=trench&limit=4`),
+        axios.get(`${API}/products?category=cap&limit=4`),
+        axios.get(`${API}/products?category=tracksuit&limit=4`),
       ]);
       setFeaturedProducts(featured.data);
       setNewProducts(newItems.data);
       setAccessories(accs.data);
+      setDresses(dr.data);
+      setAbayas(ab.data);
+      setTrenches(tr.data);
+      setCaps(cp.data);
+      setTracksuits(ts.data);
     } catch (error) {
       console.error('Failed to fetch products:', error);
     }
+  };
+
+  const CategorySection = ({ title, subtitle, products, categoryValue, bgClass = "bg-brand-white" }) => {
+    if (!products || products.length === 0) return null;
+    return (
+      <section className={`py-16 ${bgClass}`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1600px]">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-tajawal font-bold text-brand-black mb-3">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="text-gray-600 font-cairo text-lg">{subtitle}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
+            {products.map((product) => (
+              <Link 
+                key={product.id} 
+                to={`/products/${product.id}`}
+                className="product-card group"
+              >
+                <div className="product-image-container aspect-[3/4] bg-gray-100 mb-4 relative">
+                  <img
+                    src={product.images[0]?.url || '/placeholder.jpg'}
+                    alt={product.name_ar}
+                    className="product-image w-full h-full object-cover"
+                  />
+                  {product.is_on_sale && product.discount_percentage && (
+                    <span className="absolute top-3 right-3 bg-destructive text-white text-xs font-bold px-3 py-1 rounded-full">
+                      -{product.discount_percentage}%
+                    </span>
+                  )}
+                  {product.is_new && !product.is_on_sale && (
+                    <span className="absolute top-3 right-3 bg-brand-gold text-brand-black text-xs font-bold px-3 py-1 rounded-full">
+                      جديد
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-cairo font-semibold text-brand-black mb-2 group-hover:text-burgundy-500 transition-colors">
+                  {product.name_ar}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <p className="text-burgundy-500 font-bold text-lg">
+                    {formatPrice(product.price)}
+                  </p>
+                  {product.original_price && (
+                    <p className="text-gray-400 line-through text-sm">
+                      {formatPrice(product.original_price)}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link to={`/products?category=${categoryValue}`}>
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-burgundy-500 text-burgundy-500 hover:bg-burgundy-500 hover:text-white"
+              >
+                عرض جميع {title}
+                <ChevronLeft className="mr-2 w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
   };
 
   return (
@@ -267,6 +354,39 @@ const Home = () => {
           </div>
         </section>
       )}
+
+      <CategorySection 
+        title="الفساتين" 
+        subtitle="تشكيلة راقية من أجمل الفساتين"
+        products={dresses} 
+        categoryValue="dresses"
+      />
+      <CategorySection 
+        title="العبايات" 
+        subtitle="عبايات عصرية بلمسات فاخرة"
+        products={abayas} 
+        categoryValue="abayas"
+        bgClass=""
+      />
+      <CategorySection 
+        title="ترنشكوت" 
+        subtitle="الأناقة والدفء في تصميم واحد"
+        products={trenches} 
+        categoryValue="trench"
+      />
+      <CategorySection 
+        title="كاب" 
+        subtitle="لمسة عصرية لإطلالتك"
+        products={caps} 
+        categoryValue="cap"
+        bgClass=""
+      />
+      <CategorySection 
+        title="ترينق" 
+        subtitle="راحة وأناقة للإطلالات الكاجوال"
+        products={tracksuits} 
+        categoryValue="tracksuit"
+      />
     </div>
   );
 };
