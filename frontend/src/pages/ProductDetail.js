@@ -6,6 +6,7 @@ import { useCart } from '@/contexts/CartContext';
 import axios from 'axios';
 import { formatPrice } from '@/lib/utils';
 import { PRODUCT_DETAIL } from '@/constants/testIds';
+import { SOCIAL_LINKS } from '@/constants/social';
 import { toast } from 'sonner';
 import { ShoppingBag } from 'lucide-react';
 
@@ -200,7 +201,7 @@ const ProductDetail = () => {
             <div className="mt-6">
               <a
                 data-testid={PRODUCT_DETAIL.whatsappBtn}
-                href={`https://wa.me/966501234567?text=مرحباً، أريد الاستفسار عن ${product.name_ar}`}
+                href={`${SOCIAL_LINKS.whatsapp_url}?text=مرحباً، أريد الاستفسار عن ${product.name_ar}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-cairo"

@@ -17,6 +17,7 @@ import Admin from '@/pages/Admin';
 import About from '@/pages/About';
 import Contact from '@/pages/Contact';
 import Offers from '@/pages/Offers';
+import { SOCIAL_LINKS } from '@/constants/social';
 import '@/App.css';
 
 function App() {
@@ -46,7 +47,7 @@ function App() {
             <Cart open={cartOpen} onClose={() => setCartOpen(false)} />
             <Chatbot />
             <a
-              href="https://wa.me/966501234567"
+              href={SOCIAL_LINKS.whatsapp_url}
               target="_blank"
               rel="noopener noreferrer"
               className="whatsapp-fab bg-green-500 hover:bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
