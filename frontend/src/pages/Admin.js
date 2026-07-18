@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ADMIN } from '@/constants/testIds';
 import { formatPrice, formatDate, orderStatuses } from '@/lib/utils';
+import ProductManager from '@/components/ProductManager';
 import axios from 'axios';
 import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react';
 
@@ -129,12 +130,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="products" className="mt-6">
-            <Card className="p-6">
-              <h2 className="text-xl font-tajawal font-bold mb-4">إدارة المنتجات</h2>
-              <p className="text-gray-500 font-cairo">
-                يمكنك إدارة المنتجات عبر الـ API مباشرة
-              </p>
-            </Card>
+            <ProductManager />
           </TabsContent>
         </Tabs>
       </div>
