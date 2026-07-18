@@ -115,7 +115,7 @@ const Home = () => {
 
       <section className="py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1600px]">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="text-center p-8">
               <div className="w-16 h-16 bg-burgundy-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Truck className="w-8 h-8 text-burgundy-500" />
@@ -133,16 +133,6 @@ const Home = () => {
               <h3 className="font-tajawal font-bold text-xl mb-2">جودة عالية</h3>
               <p className="text-gray-600 font-cairo">
                 نضمن لك أفضل الخامات وأرقى التصاميم
-              </p>
-            </div>
-
-            <div className="text-center p-8">
-              <div className="w-16 h-16 bg-burgundy-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Package className="w-8 h-8 text-burgundy-500" />
-              </div>
-              <h3 className="font-tajawal font-bold text-xl mb-2">سهولة الإرجاع</h3>
-              <p className="text-gray-600 font-cairo">
-                إمكانية الاستبدال والإرجاع خلال 7 أيام
               </p>
             </div>
           </div>
