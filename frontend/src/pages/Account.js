@@ -15,6 +15,7 @@ const Account = () => {
   const { user, token, loading } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loyaltyTransactions, setLoyaltyTransactions] = useState([]);
+  const [loyaltyConfig, setLoyaltyConfig] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,6 +26,12 @@ const Account = () => {
       fetchLoyaltyTransactions();
     }
   }, [user, loading]);
+
+  useEffect(() => {
+    axios.get(`${API}/loyalty/config`)
+      .then((res) => setLoyaltyConfig(res.data))
+      .catch(() => setLoyaltyConfig(null));
+  }, []);
 
   const fetchOrders = async () => {
     try {
@@ -50,6 +57,12 @@ const Account = () => {
 
   if (loading) return <div className="py-12 text-center">جاري التحميل...</div>;
   if (!user) return null;
+
+  const points = user.loyalty_points || 0;
+  const threshold = loyaltyConfig?.redemption_threshold ?? 200;
+  const blockValue = loyaltyConfig?.redemption_value ?? 10;
+  const readyBlocks = Math.floor(points / threshold);
+  const pointsToNext = threshold - (points % threshold);
 
   return (
     <div data-testid={ACCOUNT.dashboard} className="py-8">
@@ -202,11 +215,37 @@ const Account = () => {
           <TabsContent value="loyalty" className="mt-6">
             <Card className="p-6 mb-6">
               <h3 className="font-tajawal font-bold text-2xl mb-2">
-                رصيدك الحالي: <span className="text-burgundy-500">{user.loyalty_points || 0}</span> نقطة
+                رصيدك الحالي: <span className="text-burgundy-500">{points}</span> نقطة
               </h3>
-              <p className="text-gray-600 font-cairo">
-                كل 10 ريال تنفقها = نقطة واحدة | كل نقطة = 1 ريال خصم
+
+              {readyBlocks > 0 ? (
+                <p
+                  data-testid="loyalty-ready-discount"
+                  className="font-cairo text-green-600 font-semibold mb-4"
+                >
+                  جاهز للاستخدام: خصم {formatPrice(readyBlocks * blockValue)} على طلبك القادم
+                </p>
+              ) : (
+                <p className="font-cairo text-gray-600 mb-4">
+                  باقي {pointsToNext} نقطة لتحصلي على أول خصم بقيمة {formatPrice(blockValue)}
+                </p>
+              )}
+
+              <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full bg-gradient-to-l from-brand-gold to-burgundy-500 transition-all duration-500"
+                  style={{ width: `${((points % threshold) / threshold) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 font-cairo mb-4">
+                {points % threshold} / {threshold} نقطة للخصم التالي
               </p>
+
+              <div className="text-sm text-gray-600 font-cairo space-y-1 border-t pt-4">
+                <p>• كل {loyaltyConfig?.points_per_amount ?? 10} د.أ تنفقيها = نقطة واحدة</p>
+                <p>• كل {threshold} نقطة = خصم {formatPrice(blockValue)} عند إتمام الطلب</p>
+                <p>• كل صديقة تسجّل بكود الإحالة الخاص بك = {loyaltyConfig?.referrer_bonus ?? 100} نقطة لك</p>
+              </div>
             </Card>
 
             <div className="space-y-3">

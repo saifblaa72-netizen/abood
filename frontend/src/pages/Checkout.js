@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,9 +31,26 @@ const Checkout = () => {
     preview_service_requested: false
   });
 
-  const deliveryFee = 30;
+  const [loyaltyConfig, setLoyaltyConfig] = useState(null);
+
+  useEffect(() => {
+    axios.get(`${API}/loyalty/config`)
+      .then((res) => setLoyaltyConfig(res.data))
+      .catch(() => setLoyaltyConfig(null));
+  }, []);
+
   const subtotal = cart.total_amount || 0;
-  const loyaltyDiscount = formData.use_loyalty_points * 1;
+  const deliveryFee = loyaltyConfig?.delivery_fee ?? 30;
+  const threshold = loyaltyConfig?.redemption_threshold ?? 200;
+  const blockValue = loyaltyConfig?.redemption_value ?? 10;
+
+  // Points are spent in whole blocks, and never for more than the products cost.
+  const affordableBlocks = Math.floor(subtotal / blockValue);
+  const ownedBlocks = Math.floor((user?.loyalty_points || 0) / threshold);
+  const maxBlocks = Math.min(ownedBlocks, affordableBlocks);
+  const usedBlocks = Math.min(formData.use_loyalty_points / threshold, maxBlocks);
+
+  const loyaltyDiscount = usedBlocks * blockValue;
   const total = subtotal + deliveryFee - loyaltyDiscount;
 
   const handleSubmit = async (e) => {
@@ -64,7 +81,7 @@ const Checkout = () => {
         items: cart.items,
         payment_method: formData.payment_method,
         notes: formData.notes,
-        use_loyalty_points: parseInt(formData.use_loyalty_points) || 0,
+        use_loyalty_points: usedBlocks * threshold,
         preview_service_requested: formData.preview_service_requested
       };
 
@@ -187,18 +204,48 @@ const Checkout = () => {
 
               {user && user.loyalty_points > 0 && (
                 <div className="bg-brand-gold/10 rounded-lg p-6">
-                  <h3 className="font-tajawal font-bold mb-2">استخدم نقاط الولاء</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    لديك {user.loyalty_points} نقطة (كل نقطة = 1 ريال)
+                  <h3 className="font-tajawal font-bold mb-2">نقاط الولاء</h3>
+                  <p className="text-sm text-gray-600 font-cairo mb-3">
+                    رصيدك {user.loyalty_points} نقطة — كل {threshold} نقطة = خصم {formatPrice(blockValue)}
                   </p>
-                  <Input
-                    type="number"
-                    min="0"
-                    max={Math.min(user.loyalty_points, subtotal)}
-                    value={formData.use_loyalty_points}
-                    onChange={(e) => setFormData({...formData, use_loyalty_points: e.target.value})}
-                    placeholder="عدد النقاط"
-                  />
+
+                  {ownedBlocks === 0 ? (
+                    <div>
+                      <div className="h-2 bg-white rounded-full overflow-hidden mb-2">
+                        <div
+                          className="h-full bg-brand-gold transition-all duration-300"
+                          style={{ width: `${Math.min(100, (user.loyalty_points / threshold) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600 font-cairo">
+                        باقي {threshold - user.loyalty_points} نقطة لتحصلي على أول خصم
+                      </p>
+                    </div>
+                  ) : maxBlocks === 0 ? (
+                    <p className="text-sm text-gray-600 font-cairo">
+                      قيمة طلبك أقل من {formatPrice(blockValue)}، فما بنقدر نطبّق خصم النقاط على هذا الطلب.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from({ length: maxBlocks + 1 }, (_, i) => i).map((blocks) => (
+                        <button
+                          key={blocks}
+                          type="button"
+                          data-testid={`loyalty-blocks-${blocks}`}
+                          onClick={() => setFormData({ ...formData, use_loyalty_points: blocks * threshold })}
+                          className={`px-4 py-2 rounded-full border-2 font-cairo text-sm transition-all ${
+                            usedBlocks === blocks
+                              ? 'bg-burgundy-500 text-white border-burgundy-500'
+                              : 'bg-white border-gray-300 hover:border-burgundy-500'
+                          }`}
+                        >
+                          {blocks === 0
+                            ? 'بدون خصم'
+                            : `${blocks * threshold} نقطة = ${formatPrice(blocks * blockValue)}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

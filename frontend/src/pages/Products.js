@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,11 +10,28 @@ import { PRODUCTS } from '@/constants/testIds';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Products = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
   const [sortBy, setSortBy] = useState('created_at');
   const [loading, setLoading] = useState(true);
+
+  // The URL is the source of truth for the category, so links like
+  // /products?category=accessories land on that filter, and the browser's
+  // back button works as expected.
+  const categoryParam = searchParams.get('category');
+  const category = categories.some(c => c.value === categoryParam) ? categoryParam : 'all';
+  const categoryLabel = categories.find(c => c.value === category)?.label;
+
+  const handleCategoryChange = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'all') {
+      next.delete('category');
+    } else {
+      next.set('category', value);
+    }
+    setSearchParams(next);
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -42,8 +59,11 @@ const Products = () => {
   return (
     <div className="py-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1600px]">
-        <h1 className="text-4xl md:text-5xl font-tajawal font-bold text-brand-black mb-8">
-          المنتجات
+        <h1
+          data-testid="products-heading"
+          className="text-4xl md:text-5xl font-tajawal font-bold text-brand-black mb-8"
+        >
+          {categoryLabel || 'المنتجات'}
         </h1>
 
         <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -59,7 +79,7 @@ const Products = () => {
             />
           </div>
 
-          <Select value={category} onValueChange={setCategory}>
+          <Select value={category} onValueChange={handleCategoryChange}>
             <SelectTrigger data-testid={PRODUCTS.categoryFilter} className="w-full md:w-[200px]">
               <SelectValue />
             </SelectTrigger>

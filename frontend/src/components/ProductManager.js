@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Image as ImageIcon, X, Upload, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, X, Upload, Loader2, Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice, categories, sizes } from '@/lib/utils';
@@ -23,6 +23,8 @@ const ProductManager = () => {
   const [formData, setFormData] = useState(initialFormState());
   const [uploadingIndex, setUploadingIndex] = useState(null);
   const [quickAdd, setQuickAdd] = useState({ color: '', color_hex: '#722F37', sizes: [], stock: 10 });
+  const [pushInfo, setPushInfo] = useState(null);
+  const [notifyingId, setNotifyingId] = useState(null);
 
   const handleFileUpload = async (index, file) => {
     if (!file) return;
@@ -75,9 +77,24 @@ const ProductManager = () => {
     };
   }
 
+  const fetchPushInfo = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/push/subscribers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPushInfo(response.data);
+    } catch {
+      setPushInfo({ enabled: false, count: 0 });
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    fetchPushInfo();
+  }, [fetchPushInfo]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -88,6 +105,33 @@ const ProductManager = () => {
       toast.error('فشل تحميل المنتجات');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNotify = async (product) => {
+    if (!pushInfo?.enabled) {
+      toast.error('خدمة الإشعارات غير مفعّلة على السيرفر');
+      return;
+    }
+    if (!pushInfo.count) {
+      toast.info('ما في أي زبونة مشتركة بالإشعارات بعد');
+      return;
+    }
+    if (!window.confirm(`إرسال إشعار عن «${product.name_ar}» إلى ${pushInfo.count} مشترِكة؟`)) return;
+
+    setNotifyingId(product.id);
+    try {
+      const response = await axios.post(`${API}/push/notify-product/${product.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const { sent, failed } = response.data;
+      toast.success(`تم إرسال ${sent} إشعار${failed ? ` (فشل ${failed})` : ''}`);
+      fetchProducts();
+      fetchPushInfo();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'فشل إرسال الإشعار');
+    } finally {
+      setNotifyingId(null);
     }
   };
 
@@ -243,8 +287,28 @@ const ProductManager = () => {
   return (
     <Card className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-tajawal font-bold">إدارة المنتجات ({products.length})</h2>
-        <Button 
+        <div>
+          <h2 className="text-xl font-tajawal font-bold">إدارة المنتجات ({products.length})</h2>
+          {pushInfo && (
+            <p
+              data-testid="push-subscriber-count"
+              className="text-sm font-cairo text-gray-500 mt-1 flex items-center gap-1.5"
+            >
+              {pushInfo.enabled ? (
+                <>
+                  <Bell className="w-3.5 h-3.5 text-burgundy-500" />
+                  {pushInfo.count} مشترِكة بالإشعارات
+                </>
+              ) : (
+                <>
+                  <BellOff className="w-3.5 h-3.5" />
+                  الإشعارات غير مفعّلة على السيرفر
+                </>
+              )}
+            </p>
+          )}
+        </div>
+        <Button
           data-testid="admin-add-product-btn"
           onClick={openAddDialog}
           className="bg-burgundy-500 hover:bg-burgundy-600"
@@ -277,8 +341,29 @@ const ProductManager = () => {
                   المخزون: {product.total_stock}
                 </p>
                 <p className="text-burgundy-500 font-bold mt-1">{formatPrice(product.price)}</p>
+                {product.notified_at && (
+                  <p className="text-xs text-green-600 font-cairo mt-1 flex items-center gap-1">
+                    <Bell className="w-3 h-3" />
+                    تم إرسال إشعار عن هذا المنتج
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleNotify(product)}
+                  disabled={notifyingId === product.id}
+                  title={product.notified_at ? 'إعادة إرسال الإشعار' : 'إرسال إشعار للزبونات'}
+                  className={product.notified_at ? 'text-gray-400' : 'text-burgundy-500 hover:bg-burgundy-50'}
+                  data-testid={`admin-notify-${product.id}`}
+                >
+                  {notifyingId === product.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Bell className="w-4 h-4" />
+                  )}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

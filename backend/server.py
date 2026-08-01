@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import asyncio
+import json
 import logging
 from pathlib import Path
 from typing import List, Optional
@@ -11,10 +13,12 @@ import uuid
 from datetime import datetime, timezone
 import bcrypt
 import jwt
+from pywebpush import webpush_async, WebPushException
 from models import (
     Product, ProductCreate, User, UserRegister, UserLogin, UserAddress,
     Cart, CartItem, Order, OrderCreate, OrderItem, DiscountCode,
-    ChatMessage, LoyaltyTransaction
+    ChatMessage, LoyaltyTransaction,
+    PushSubscription, PushSubscriptionCreate, PushUnsubscribe
 )
 from storage import init_storage, put_object, get_object
 
@@ -31,16 +35,47 @@ api_router = APIRouter(prefix="/api")
 JWT_SECRET = os.environ.get("JWT_SECRET", "waheeba-fashion-secret-key-2024")
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY")
 
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:info@waheebafashion.com")
+PUSH_SEND_CONCURRENCY = 20
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 LOYALTY_POINTS_CONFIG = {
+    # نقطة واحدة لكل 10 د.أ من قيمة الطلب
     "points_per_amount": 10,
-    "points_value": 1,
+    # الاستبدال يتم بشرائح: كل 200 نقطة = 10 د.أ خصم
+    "redemption_threshold": 200,
+    "redemption_value": 10.0,
     "welcome_bonus": 50,
     "referrer_bonus": 100,
     "referred_bonus": 50
 }
+
+
+def calculate_points_discount(points: int, subtotal: float) -> tuple:
+    """Convert loyalty points into a discount.
+
+    Points are only redeemable in whole blocks (200 -> 10 د.أ), and the
+    discount never exceeds the value of the products themselves, so an order
+    can never end up negative. Returns the points actually consumed and the
+    discount they bought.
+    """
+    threshold = LOYALTY_POINTS_CONFIG["redemption_threshold"]
+    value = LOYALTY_POINTS_CONFIG["redemption_value"]
+
+    blocks = points // threshold
+    if blocks <= 0:
+        return 0, 0.0
+
+    affordable_blocks = int(subtotal // value)
+    blocks = min(blocks, affordable_blocks)
+    if blocks <= 0:
+        return 0, 0.0
+
+    return blocks * threshold, round(blocks * value, 2)
 
 
 def generate_referral_code(full_name: str) -> str:
@@ -83,6 +118,13 @@ async def startup():
         logger.info("Storage initialized")
     except Exception as e:
         logger.error(f"Storage init error (non-blocking): {e}")
+
+    try:
+        await db.push_subscriptions.create_index("endpoint", unique=True)
+        if not push_is_configured():
+            logger.warning("VAPID keys missing - push notifications are disabled")
+    except Exception as e:
+        logger.error(f"Push index error (non-blocking): {e}")
 
     try:
         admin_exists = await db.users.find_one({"email": "admin@waheebafashion.com"})
@@ -586,12 +628,15 @@ async def create_order(order_data: OrderCreate, authorization: str = Header(None
     subtotal = sum([item.price * item.quantity for item in order_data.items])
     delivery_fee = DELIVERY_FEES["default"]
     
+    points_used = 0
     points_discount = 0.0
     if order_data.use_loyalty_points > 0:
         if user["loyalty_points"] < order_data.use_loyalty_points:
             raise HTTPException(status_code=400, detail="Insufficient loyalty points")
-        points_discount = order_data.use_loyalty_points * LOYALTY_POINTS_CONFIG["points_value"]
-    
+        points_used, points_discount = calculate_points_discount(
+            order_data.use_loyalty_points, subtotal
+        )
+
     total_amount = subtotal + delivery_fee - points_discount
     
     order_number = f"WF{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:8].upper()}"
@@ -621,18 +666,18 @@ async def create_order(order_data: OrderCreate, authorization: str = Header(None
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.orders.insert_one(doc)
     
-    new_points = user["loyalty_points"] - order_data.use_loyalty_points + points_earned
+    new_points = user["loyalty_points"] - points_used + points_earned
     await db.users.update_one(
         {"id": order_data.user_id},
         {"$set": {"loyalty_points": new_points, "total_spent": user.get("total_spent", 0) + total_amount}}
     )
-    
-    if order_data.use_loyalty_points > 0:
+
+    if points_used > 0:
         trans = LoyaltyTransaction(
             user_id=order_data.user_id,
-            points=-order_data.use_loyalty_points,
+            points=-points_used,
             transaction_type="redemption",
-            description=f"استخدام النقاط في الطلب {order_number}",
+            description=f"استخدام {points_used} نقطة في الطلب {order_number} (خصم {points_discount:.2f} د.أ)",
             order_id=order.id
         )
         trans_doc = trans.model_dump()
@@ -714,6 +759,20 @@ async def update_order_status(order_id: str, status: str, authorization: str = H
     return {"message": "Order status updated successfully"}
 
 
+@api_router.get("/loyalty/config")
+async def get_loyalty_config():
+    """Single source of truth for the loyalty rules shown in the UI."""
+    return {
+        "points_per_amount": LOYALTY_POINTS_CONFIG["points_per_amount"],
+        "redemption_threshold": LOYALTY_POINTS_CONFIG["redemption_threshold"],
+        "redemption_value": LOYALTY_POINTS_CONFIG["redemption_value"],
+        "welcome_bonus": LOYALTY_POINTS_CONFIG["welcome_bonus"],
+        "referrer_bonus": LOYALTY_POINTS_CONFIG["referrer_bonus"],
+        "referred_bonus": LOYALTY_POINTS_CONFIG["referred_bonus"],
+        "delivery_fee": DELIVERY_FEES["default"]
+    }
+
+
 @api_router.get("/loyalty/transactions")
 async def get_loyalty_transactions(authorization: str = Header(None)):
     user_data = await get_current_user(authorization)
@@ -784,6 +843,148 @@ async def chat_message(message: str, session_id: str):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
+
+
+def push_is_configured() -> bool:
+    return bool(VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)
+
+
+async def send_push_to_all(payload: dict) -> dict:
+    """Deliver `payload` to every stored subscription.
+
+    Endpoints that the push service reports as gone (404/410) are deleted, so
+    the collection does not fill up with browsers that uninstalled the app or
+    revoked permission.
+    """
+    if not push_is_configured():
+        raise HTTPException(status_code=503, detail="Push notifications are not configured")
+
+    subscriptions = await db.push_subscriptions.find({}, {"_id": 0}).to_list(100000)
+    if not subscriptions:
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0}
+
+    body = json.dumps(payload, ensure_ascii=False)
+    semaphore = asyncio.Semaphore(PUSH_SEND_CONCURRENCY)
+    expired_endpoints = []
+    sent = 0
+    failed = 0
+
+    async def deliver(sub):
+        nonlocal sent, failed
+        async with semaphore:
+            try:
+                await webpush_async(
+                    subscription_info={"endpoint": sub["endpoint"], "keys": sub["keys"]},
+                    data=body,
+                    vapid_private_key=VAPID_PRIVATE_KEY,
+                    vapid_claims={"sub": VAPID_SUBJECT},
+                    ttl=60 * 60 * 24,
+                    timeout=10,
+                )
+                sent += 1
+            except WebPushException as exc:
+                failed += 1
+                status = getattr(exc.response, "status", None)
+                if status in (404, 410):
+                    expired_endpoints.append(sub["endpoint"])
+                else:
+                    logger.warning("Push failed for %s: %s", sub["endpoint"][:60], exc)
+            except Exception as exc:
+                failed += 1
+                logger.warning("Push error for %s: %s", sub["endpoint"][:60], exc)
+
+    await asyncio.gather(*[deliver(sub) for sub in subscriptions])
+
+    if expired_endpoints:
+        await db.push_subscriptions.delete_many({"endpoint": {"$in": expired_endpoints}})
+
+    return {
+        "sent": sent,
+        "failed": failed,
+        "removed": len(expired_endpoints),
+        "total": len(subscriptions)
+    }
+
+
+@api_router.get("/push/public-key")
+async def get_push_public_key():
+    return {"enabled": push_is_configured(), "public_key": VAPID_PUBLIC_KEY}
+
+
+@api_router.post("/push/subscribe")
+async def subscribe_to_push(
+    subscription: PushSubscriptionCreate,
+    authorization: str = Header(None),
+    user_agent: str = Header("")
+):
+    user_id = None
+    if authorization:
+        try:
+            user_id = (await get_current_user(authorization)).get("user_id")
+        except HTTPException:
+            pass
+
+    record = PushSubscription(
+        endpoint=subscription.endpoint,
+        keys=subscription.keys,
+        user_id=user_id,
+        user_agent=user_agent[:300]
+    )
+    doc = record.model_dump()
+    created_at = doc.pop('created_at').isoformat()
+    doc.pop('id')
+
+    await db.push_subscriptions.update_one(
+        {"endpoint": subscription.endpoint},
+        {"$set": doc, "$setOnInsert": {"id": record.id, "created_at": created_at}},
+        upsert=True
+    )
+    return {"success": True}
+
+
+@api_router.post("/push/unsubscribe")
+async def unsubscribe_from_push(payload: PushUnsubscribe):
+    await db.push_subscriptions.delete_one({"endpoint": payload.endpoint})
+    return {"success": True}
+
+
+@api_router.get("/push/subscribers")
+async def count_push_subscribers(authorization: str = Header(None)):
+    user_data = await get_current_user(authorization)
+    if not user_data.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return {
+        "enabled": push_is_configured(),
+        "count": await db.push_subscriptions.count_documents({})
+    }
+
+
+@api_router.post("/push/notify-product/{product_id}")
+async def notify_new_product(product_id: str, authorization: str = Header(None)):
+    user_data = await get_current_user(authorization)
+    if not user_data.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    images = product.get("images") or []
+    primary = next((img for img in images if img.get("is_primary")), images[0] if images else None)
+
+    result = await send_push_to_all({
+        "title": "وصل جديد في وهيبة فاشن",
+        "body": f"{product['name_ar']} — {product['price']:.2f} د.أ",
+        "url": f"/products/{product_id}",
+        "image": (primary or {}).get("url", ""),
+        "tag": f"product-{product_id}"
+    })
+
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": {"notified_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return result
 
 
 @api_router.get("/admin/stats")

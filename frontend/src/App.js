@@ -9,6 +9,7 @@ import Footer from '@/components/Footer';
 import Chatbot from '@/components/Chatbot';
 import Cart from '@/components/Cart';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
+import NotificationPrompt from '@/components/NotificationPrompt';
 import Home from '@/pages/Home';
 import Products from '@/pages/Products';
 import ProductDetail from '@/pages/ProductDetail';
@@ -19,6 +20,10 @@ import Admin from '@/pages/Admin';
 import About from '@/pages/About';
 import Contact from '@/pages/Contact';
 import Offers from '@/pages/Offers';
+import PrivacyPolicy from '@/pages/PrivacyPolicy';
+import ReturnPolicy from '@/pages/ReturnPolicy';
+import Terms from '@/pages/Terms';
+import FAQ from '@/pages/FAQ';
 import { SOCIAL_LINKS } from '@/constants/social';
 import '@/App.css';
 
@@ -44,12 +49,17 @@ function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/offers" element={<Offers />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/return-policy" element={<ReturnPolicy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/faq" element={<FAQ />} />
               </Routes>
             </main>
             <Footer />
             <Cart open={cartOpen} onClose={() => setCartOpen(false)} />
             <Chatbot />
             <InstallAppPrompt />
+            <NotificationPrompt />
             <a
               href={SOCIAL_LINKS.whatsapp_url}
               target="_blank"

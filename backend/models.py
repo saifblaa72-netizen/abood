@@ -38,6 +38,7 @@ class Product(BaseModel):
     sold_count: int = 0
     rating: float = 0.0
     reviews_count: int = 0
+    notified_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -188,4 +189,28 @@ class LoyaltyTransaction(BaseModel):
     transaction_type: str
     description: str
     order_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscriptionCreate(BaseModel):
+    endpoint: str
+    keys: PushSubscriptionKeys
+    expirationTime: Optional[float] = None
+
+
+class PushUnsubscribe(BaseModel):
+    endpoint: str
+
+
+class PushSubscription(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    endpoint: str
+    keys: PushSubscriptionKeys
+    user_id: Optional[str] = None
+    user_agent: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
