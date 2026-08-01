@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ADMIN } from '@/constants/testIds';
 import { formatPrice, formatDate, orderStatuses } from '@/lib/utils';
 import ProductManager from '@/components/ProductManager';
+import CustomerManager from '@/components/CustomerManager';
 import AdminOrderCard from '@/components/AdminOrderCard';
 import axios from 'axios';
 import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react';
@@ -16,6 +17,7 @@ const Admin = () => {
   const { user, token, loading } = useAuth();
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('orders');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -79,15 +81,23 @@ const Admin = () => {
               </div>
             </Card>
 
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-500 text-sm font-cairo">إجمالي العملاء</p>
-                  <p className="text-3xl font-bold">{stats.total_users}</p>
+            <button
+              type="button"
+              data-testid="admin-customers-card"
+              onClick={() => setActiveTab('customers')}
+              className="text-right"
+            >
+              <Card className="p-6 h-full cursor-pointer hover:border-burgundy-500 hover:shadow-md transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-500 text-sm font-cairo">إجمالي العملاء</p>
+                    <p className="text-3xl font-bold">{stats.total_users}</p>
+                    <p className="text-xs text-burgundy-500 font-cairo mt-1">اضغطي لعرض التفاصيل</p>
+                  </div>
+                  <Users className="w-12 h-12 text-burgundy-500" />
                 </div>
-                <Users className="w-12 h-12 text-burgundy-500" />
-              </div>
-            </Card>
+              </Card>
+            </button>
 
             <Card className="p-6">
               <div className="flex items-center justify-between">
@@ -101,10 +111,11 @@ const Admin = () => {
           </div>
         )}
 
-        <Tabs defaultValue="orders" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList>
             <TabsTrigger data-testid={ADMIN.ordersTab} value="orders">الطلبات</TabsTrigger>
             <TabsTrigger data-testid={ADMIN.productsTab} value="products">المنتجات</TabsTrigger>
+            <TabsTrigger data-testid="admin-customers-tab" value="customers">العملاء</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" className="mt-6">
@@ -130,6 +141,10 @@ const Admin = () => {
 
           <TabsContent value="products" className="mt-6">
             <ProductManager />
+          </TabsContent>
+
+          <TabsContent value="customers" className="mt-6">
+            <CustomerManager />
           </TabsContent>
         </Tabs>
       </div>

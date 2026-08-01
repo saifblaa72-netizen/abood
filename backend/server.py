@@ -88,7 +88,7 @@ def generate_referral_code(full_name: str) -> str:
     return f"{clean_name}{suffix}"
 
 DELIVERY_FEES = {
-    "default": 30.0
+    "default": 3.0
 }
 
 
@@ -985,6 +985,96 @@ async def notify_new_product(product_id: str, authorization: str = Header(None))
         {"$set": {"notified_at": datetime.now(timezone.utc).isoformat()}}
     )
     return result
+
+
+@api_router.get("/admin/customers")
+async def get_customers(
+    search: Optional[str] = None,
+    sort_by: str = "loyalty_points",
+    authorization: str = Header(None)
+):
+    """Customer list for the admin dashboard.
+
+    Never returns password hashes. Alongside the profile it reports how many
+    points each customer holds and how many of those came from her referral
+    code, plus who invited her.
+    """
+    user_data = await get_current_user(authorization)
+    if not user_data.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    query = {"is_admin": {"$ne": True}}
+    if search:
+        term = search.strip()
+        query["$or"] = [
+            {"full_name": {"$regex": term, "$options": "i"}},
+            {"email": {"$regex": term, "$options": "i"}},
+            {"phone": {"$regex": term, "$options": "i"}},
+            {"referral_code": {"$regex": term, "$options": "i"}},
+        ]
+
+    users = await db.users.find(query, {"_id": 0, "password_hash": 0}).to_list(2000)
+
+    order_stats = {}
+    async for row in db.orders.aggregate([
+        {"$group": {
+            "_id": "$user_id",
+            "orders_count": {"$sum": 1},
+            "spent": {"$sum": "$total_amount"}
+        }}
+    ]):
+        order_stats[row["_id"]] = row
+
+    referral_points = {}
+    async for row in db.loyalty_transactions.aggregate([
+        {"$match": {"transaction_type": "referral_reward"}},
+        {"$group": {"_id": "$user_id", "points": {"$sum": "$points"}}}
+    ]):
+        referral_points[row["_id"]] = row["points"]
+
+    referrer_ids = {u["referred_by"] for u in users if u.get("referred_by")}
+    referrer_names = {}
+    if referrer_ids:
+        async for row in db.users.find(
+            {"id": {"$in": list(referrer_ids)}}, {"_id": 0, "id": 1, "full_name": 1}
+        ):
+            referrer_names[row["id"]] = row["full_name"]
+
+    threshold = LOYALTY_POINTS_CONFIG["redemption_threshold"]
+    value = LOYALTY_POINTS_CONFIG["redemption_value"]
+
+    customers = []
+    for u in users:
+        stats = order_stats.get(u["id"], {})
+        points = u.get("loyalty_points", 0)
+        customers.append({
+            "id": u["id"],
+            "full_name": u.get("full_name", ""),
+            "email": u.get("email", ""),
+            "phone": u.get("phone", ""),
+            "loyalty_points": points,
+            "available_discount": round((points // threshold) * value, 2),
+            "referral_code": u.get("referral_code", ""),
+            "referral_count": u.get("referral_count", 0),
+            "referral_points": referral_points.get(u["id"], 0),
+            "referred_by_name": referrer_names.get(u.get("referred_by")),
+            "orders_count": stats.get("orders_count", 0),
+            "total_spent": round(stats.get("spent", 0.0), 2),
+            "created_at": u.get("created_at"),
+        })
+
+    sort_keys = {
+        "loyalty_points": lambda c: c["loyalty_points"],
+        "referral_count": lambda c: c["referral_count"],
+        "total_spent": lambda c: c["total_spent"],
+        "orders_count": lambda c: c["orders_count"],
+    }
+    if sort_by in sort_keys:
+        customers.sort(key=sort_keys[sort_by], reverse=True)
+    else:
+        customers.sort(key=lambda c: c.get("created_at") or "", reverse=True)
+
+    return customers
 
 
 @api_router.get("/admin/stats")

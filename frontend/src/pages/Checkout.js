@@ -40,7 +40,7 @@ const Checkout = () => {
   }, []);
 
   const subtotal = cart.total_amount || 0;
-  const deliveryFee = loyaltyConfig?.delivery_fee ?? 30;
+  const deliveryFee = loyaltyConfig?.delivery_fee ?? 3;
   const threshold = loyaltyConfig?.redemption_threshold ?? 200;
   const blockValue = loyaltyConfig?.redemption_value ?? 10;
 

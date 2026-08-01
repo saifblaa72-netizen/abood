@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
@@ -5,10 +6,22 @@ import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '@/lib/utils';
 import { CART } from '@/constants/testIds';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Cart = ({ open, onClose }) => {
   const { cart, updateCartItem, clearCart } = useCart();
   const navigate = useNavigate();
+  const [deliveryFee, setDeliveryFee] = useState(3);
+
+  // Read the fee from the server so the drawer can never disagree with the
+  // amount the customer is actually charged at checkout.
+  useEffect(() => {
+    axios.get(`${API}/loyalty/config`)
+      .then((res) => setDeliveryFee(res.data.delivery_fee))
+      .catch(() => {});
+  }, []);
 
   const handleQuantityChange = async (item, newQuantity) => {
     try {
@@ -23,7 +36,6 @@ const Cart = ({ open, onClose }) => {
     navigate('/checkout');
   };
 
-  const deliveryFee = 30;
   const total = (cart.total_amount || 0) + deliveryFee;
 
   return (
