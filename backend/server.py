@@ -91,6 +91,27 @@ DELIVERY_FEES = {
     "default": 3.0
 }
 
+# Order statuses that notify the customer. Statuses left out (pending,
+# cancelled) are handled by phone, so they deliberately send nothing.
+ORDER_STATUS_NOTIFICATIONS = {
+    "confirmed": {
+        "title": "تم تأكيد طلبك",
+        "body": "طلبك رقم {order_number} تم تأكيده وبلّشنا نجهّزه."
+    },
+    "processing": {
+        "title": "تم تجهيز طلبك",
+        "body": "طلبك رقم {order_number} جاهز وبيطلع للتوصيل قريباً."
+    },
+    "shipped": {
+        "title": "طلبك في الطريق",
+        "body": "طلبك رقم {order_number} طلع مع المندوب وبيوصلك قريباً."
+    },
+    "delivered": {
+        "title": "تم تسليم طلبك",
+        "body": "طلبك رقم {order_number} وصلك. نتمنى تكوني مبسوطة فيه!"
+    },
+}
+
 
 def create_token(user_id: str, email: str, is_admin: bool) -> str:
     payload = {"user_id": user_id, "email": email, "is_admin": is_admin}
@@ -747,16 +768,33 @@ async def update_order_status(order_id: str, status: str, authorization: str = H
     valid_statuses = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
-    
-    result = await db.orders.update_one(
+
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    await db.orders.update_one(
         {"id": order_id},
         {"$set": {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    return {"message": "Order status updated successfully"}
+
+    notification = {"sent": 0, "failed": 0, "removed": 0, "total": 0}
+    template = ORDER_STATUS_NOTIFICATIONS.get(status)
+    # Only the customer who placed the order is notified, and only for the
+    # statuses she actually cares about. A push failure must not fail the
+    # status update itself.
+    if template and order.get("status") != status:
+        try:
+            notification = await send_push_to_user(order.get("user_id"), {
+                "title": template["title"],
+                "body": template["body"].format(order_number=order.get("order_number", "")),
+                "url": "/account",
+                "tag": f"order-{order_id}"
+            })
+        except Exception as exc:
+            logger.warning("Order status push failed for %s: %s", order_id, exc)
+
+    return {"message": "Order status updated successfully", "notification": notification}
 
 
 @api_router.get("/loyalty/config")
@@ -850,16 +888,37 @@ def push_is_configured() -> bool:
 
 
 async def send_push_to_all(payload: dict) -> dict:
-    """Deliver `payload` to every stored subscription.
+    """Deliver `payload` to every stored subscription."""
+    if not push_is_configured():
+        raise HTTPException(status_code=503, detail="Push notifications are not configured")
+
+    subscriptions = await db.push_subscriptions.find({}, {"_id": 0}).to_list(100000)
+    return await _deliver_push(payload, subscriptions)
+
+
+async def send_push_to_user(user_id: str, payload: dict) -> dict:
+    """Deliver `payload` only to the devices belonging to one customer.
+
+    Used for order updates, which must never reach anyone else. Returns zero
+    counts instead of raising when push is off or the customer never allowed
+    notifications, so an order status change is never blocked by it.
+    """
+    if not user_id or not push_is_configured():
+        return {"sent": 0, "failed": 0, "removed": 0, "total": 0}
+
+    subscriptions = await db.push_subscriptions.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).to_list(100)
+    return await _deliver_push(payload, subscriptions)
+
+
+async def _deliver_push(payload: dict, subscriptions: list) -> dict:
+    """Fan `payload` out to `subscriptions`.
 
     Endpoints that the push service reports as gone (404/410) are deleted, so
     the collection does not fill up with browsers that uninstalled the app or
     revoked permission.
     """
-    if not push_is_configured():
-        raise HTTPException(status_code=503, detail="Push notifications are not configured")
-
-    subscriptions = await db.push_subscriptions.find({}, {"_id": 0}).to_list(100000)
     if not subscriptions:
         return {"sent": 0, "failed": 0, "removed": 0, "total": 0}
 

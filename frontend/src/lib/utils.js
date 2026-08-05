@@ -32,9 +32,13 @@ export const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 export const orderStatuses = {
   pending: 'قيد الانتظار',
-  confirmed: 'مؤكد',
-  processing: 'قيد المعالجة',
-  shipped: 'تم الشحن',
-  delivered: 'تم التوصيل',
+  confirmed: 'تم التأكيد',
+  processing: 'تم تجهيز الطلب',
+  shipped: 'الطلب في الطريق',
+  delivered: 'تم التسليم',
   cancelled: 'ملغي'
 };
+
+// The steps an order normally walks through, in order. Each one notifies the
+// customer, so they get their own one-tap button in the admin card.
+export const orderSteps = ['confirmed', 'processing', 'shipped', 'delivered'];

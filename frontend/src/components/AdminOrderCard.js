@@ -3,8 +3,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronDown, ChevronUp, Package, MapPin, Phone, Mail, StickyNote } from 'lucide-react';
-import { formatPrice, formatDate, orderStatuses } from '@/lib/utils';
+import { ChevronDown, ChevronUp, Package, MapPin, Phone, Mail, StickyNote, Check } from 'lucide-react';
+import { formatPrice, formatDate, orderStatuses, orderSteps } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from 'axios';
@@ -18,15 +18,26 @@ const AdminOrderCard = ({ order, onStatusChange }) => {
   const [updating, setUpdating] = useState(false);
 
   const handleStatusChange = async (newStatus) => {
+    if (newStatus === currentStatus) return;
     setUpdating(true);
     try {
-      await axios.put(
+      const response = await axios.put(
         `${API}/orders/${order.id}/status?status=${newStatus}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setCurrentStatus(newStatus);
-      toast.success('تم تحديث حالة الطلب');
+
+      // Tell the admin whether the customer actually got the notification,
+      // instead of silently pretending she did.
+      const sent = response.data?.notification?.sent || 0;
+      if (sent > 0) {
+        toast.success(`تم التحديث ووصل إشعار للعميلة (${sent})`);
+      } else if (orderSteps.includes(newStatus)) {
+        toast.success('تم تحديث الحالة — العميلة ما مفعّلة الإشعارات');
+      } else {
+        toast.success('تم تحديث حالة الطلب');
+      }
       if (onStatusChange) onStatusChange();
     } catch (error) {
       toast.error('فشل تحديث الحالة');
@@ -199,8 +210,40 @@ const AdminOrderCard = ({ order, onStatusChange }) => {
             )}
           </div>
 
-          <div className="flex items-center gap-3 pt-3 border-t">
-            <label className="font-cairo font-semibold">تغيير الحالة:</label>
+          <div className="pt-3 border-t">
+            <p className="font-cairo font-semibold mb-1">تحديث حالة الطلب</p>
+            <p className="text-xs text-gray-500 font-cairo mb-3">
+              كل خطوة بترسل إشعار للعميلة على جوالها
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {orderSteps.map((step, index) => {
+                const isCurrent = currentStatus === step;
+                const isDone = orderSteps.indexOf(currentStatus) > index;
+                return (
+                  <Button
+                    key={step}
+                    size="sm"
+                    disabled={updating || isCurrent}
+                    onClick={() => handleStatusChange(step)}
+                    data-testid={`admin-order-step-${step}-${order.id}`}
+                    className={
+                      isCurrent
+                        ? 'bg-burgundy-500 hover:bg-burgundy-500 text-white cursor-default'
+                        : isDone
+                        ? 'bg-green-600/10 text-green-700 hover:bg-green-600/20 border border-green-600/30'
+                        : 'bg-white text-brand-black border border-gray-300 hover:border-burgundy-500 hover:text-burgundy-500'
+                    }
+                  >
+                    {isDone && <Check className="w-3.5 h-3.5 ml-1" />}
+                    {orderStatuses[step]}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-3">
+            <label className="font-cairo text-sm text-gray-500">أو اختاري يدوياً:</label>
             <Select 
               value={currentStatus}
               onValueChange={handleStatusChange}
