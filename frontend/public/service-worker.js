@@ -1,6 +1,5 @@
-const CACHE_NAME = 'waheeba-fashion-v2';
+const CACHE_NAME = 'waheeba-fashion-v3';
 const urlsToCache = [
-  '/',
   '/logo.png',
   '/manifest.json'
 ];
@@ -66,15 +65,49 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// The HTML must never be served from cache first. Every deploy produces a new
+// bundle filename, so a cached index.html asks for a bundle that no longer
+// exists. The SPA rewrite answers that request with index.html instead of a
+// 404, the browser tries to run HTML as JavaScript, and the page renders blank.
+// Network-first for navigations keeps returning visitors on the current build.
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('/api/')) return;
-  
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
+
+  const isNavigation =
+    request.mode === 'navigate' ||
+    (request.destination === '' && request.headers.get('accept') || '').includes('text/html');
+
+  if (isNavigation) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('/', copy)).catch(() => {});
+          return response;
+        })
+        // Offline only: fall back to the last page we successfully loaded.
+        .catch(() => caches.match('/').then((cached) => cached || Response.error()))
+    );
+    return;
+  }
+
+  // Build output is content-hashed, so a hit is always the right file. A miss
+  // goes to the network and is never substituted with index.html.
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
-        return fetchResponse;
-      }).catch(() => caches.match('/'));
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
+        if (response.ok && url.pathname.startsWith('/static/')) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+        }
+        return response;
+      });
     })
   );
 });
