@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { ACCOUNT } from '@/constants/testIds';
-import { formatPrice, formatDate, orderStatuses } from '@/lib/utils';
+import { formatPrice, formatDate, orderStatuses, asArray } from '@/lib/utils';
 import { Gift, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -38,7 +38,7 @@ const Account = () => {
       const response = await axios.get(`${API}/orders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setOrders(response.data);
+      setOrders(asArray(response.data));
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
@@ -49,7 +49,7 @@ const Account = () => {
       const response = await axios.get(`${API}/loyalty/transactions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setLoyaltyTransactions(response.data);
+      setLoyaltyTransactions(asArray(response.data));
     } catch (error) {
       console.error('Failed to fetch loyalty transactions:', error);
     }

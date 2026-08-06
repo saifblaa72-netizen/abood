@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Plus, Edit, Trash2, Image as ImageIcon, X, Upload, Loader2, Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatPrice, categories, sizes } from '@/lib/utils';
+import { formatPrice, categories, sizes, asArray } from '@/lib/utils';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -100,7 +100,7 @@ const ProductManager = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API}/products?limit=100`);
-      setProducts(response.data);
+      setProducts(asArray(response.data));
     } catch (error) {
       toast.error('فشل تحميل المنتجات');
     } finally {

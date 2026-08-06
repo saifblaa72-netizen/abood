@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ADMIN } from '@/constants/testIds';
-import { formatPrice, formatDate, orderStatuses } from '@/lib/utils';
+import { formatPrice, formatDate, orderStatuses, asArray } from '@/lib/utils';
 import ProductManager from '@/components/ProductManager';
 import CustomerManager from '@/components/CustomerManager';
 import AdminOrderCard from '@/components/AdminOrderCard';
@@ -45,7 +45,7 @@ const Admin = () => {
       const response = await axios.get(`${API}/orders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setOrders(response.data);
+      setOrders(asArray(response.data));
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }

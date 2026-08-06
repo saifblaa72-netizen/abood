@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, Star, TrendingUp, Truck, Shield, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import axios from 'axios';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, asArray } from '@/lib/utils';
 import { HOME } from '@/constants/testIds';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -36,15 +36,15 @@ const Home = () => {
         axios.get(`${API}/products?category=cap&limit=4`),
         axios.get(`${API}/products?category=tracksuit&limit=4`),
       ]);
-      setFeaturedProducts(featured.data);
-      setNewProducts(newItems.data);
-      setAccessories(accs.data);
-      setDresses(dr.data);
-      setAbayas(ab.data);
-      setShawls(sh.data);
-      setTrenches(tr.data);
-      setCaps(cp.data);
-      setTracksuits(ts.data);
+      setFeaturedProducts(asArray(featured.data));
+      setNewProducts(asArray(newItems.data));
+      setAccessories(asArray(accs.data));
+      setDresses(asArray(dr.data));
+      setAbayas(asArray(ab.data));
+      setShawls(asArray(sh.data));
+      setTrenches(asArray(tr.data));
+      setCaps(asArray(cp.data));
+      setTracksuits(asArray(ts.data));
     } catch (error) {
       console.error('Failed to fetch products:', error);
     }

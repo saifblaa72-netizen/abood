@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, asArray } from '@/lib/utils';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -15,7 +15,7 @@ const Offers = () => {
   const fetchOffers = async () => {
     try {
       const response = await axios.get(`${API}/products?is_on_sale=true&limit=20`);
-      setProducts(response.data);
+      setProducts(asArray(response.data));
     } catch (error) {
       console.error('Failed to fetch offers:', error);
     }

@@ -6,8 +6,14 @@ export function cn(...inputs) {
 }
 
 export const formatPrice = (price) => {
-  return `${price.toFixed(2)} د.أ`;
+  return `${Number(price ?? 0).toFixed(2)} د.أ`;
 };
+
+// Guards every list that comes from the API. When the backend is down or a
+// proxy answers with an HTML error page, response.data is a string; calling
+// .map on it throws and React unmounts the whole tree, leaving a blank page.
+// An empty list degrades to "no products" instead of taking the site down.
+export const asArray = (value) => (Array.isArray(value) ? value : []);
 
 export const formatDate = (date) => {
   return new Date(date).toLocaleDateString('ar-SA', {

@@ -4,7 +4,7 @@ import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import axios from 'axios';
-import { formatPrice, categories } from '@/lib/utils';
+import { formatPrice, categories, asArray } from '@/lib/utils';
 import { PRODUCTS } from '@/constants/testIds';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -48,7 +48,7 @@ const Products = () => {
       if (search) params.search = search;
 
       const response = await axios.get(`${API}/products`, { params });
-      setProducts(response.data);
+      setProducts(asArray(response.data));
     } catch (error) {
       console.error('Failed to fetch products:', error);
     } finally {

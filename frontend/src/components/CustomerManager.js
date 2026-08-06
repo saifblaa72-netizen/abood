@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Gift, Copy, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatPrice, formatDate } from '@/lib/utils';
+import { formatPrice, formatDate, asArray } from '@/lib/utils';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -26,7 +26,7 @@ const CustomerManager = () => {
         params,
         headers: { Authorization: `Bearer ${token}` }
       });
-      setCustomers(response.data);
+      setCustomers(asArray(response.data));
     } catch (error) {
       toast.error('فشل تحميل بيانات العملاء');
     } finally {
