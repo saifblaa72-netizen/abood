@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Phone, MapPin } from 'lucide-react';
 import { SOCIAL_LINKS } from '@/constants/social';
+import { playLogoSound } from '@/lib/sound';
 
 const Footer = () => {
   return (
@@ -8,11 +9,13 @@ const Footer = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1600px] py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           <div>
-            <img 
-              src="/logo.png" 
-              alt="وهيبة فاشن" 
-              className="h-20 w-auto object-contain mb-6 bg-white/5 p-3 rounded-lg"
-            />
+            <Link to="/" onClick={playLogoSound} className="inline-block cursor-pointer">
+              <img 
+                src="/logo.png" 
+                alt="وهيبة فاشن" 
+                className="h-20 w-auto object-contain mb-6 bg-white/5 p-3 rounded-lg hover:opacity-90 transition-opacity"
+              />
+            </Link>
             <p className="text-gray-300 font-cairo leading-relaxed mb-6">
               متجر إلكتروني للملابس النسائية العصرية والأنيقة بأعلى معايير الجودة والأناقة.
             </p>

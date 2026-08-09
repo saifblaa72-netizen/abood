@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { playLogoSound } from '@/lib/sound';
 
 const InstallAppPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -68,7 +69,12 @@ const InstallAppPrompt = () => {
             <X className="w-4 h-4 text-gray-500" />
           </button>
           <div className="flex items-start gap-3">
-            <img src="/logo.png" alt="Logo" className="w-14 h-14 object-contain flex-shrink-0" />
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              onClick={playLogoSound}
+              className="w-14 h-14 object-contain flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity" 
+            />
             <div className="flex-1">
               <h3 className="font-tajawal font-bold text-brand-black mb-1">
                 حمّلي التطبيق!
@@ -100,7 +106,12 @@ const InstallAppPrompt = () => {
               <X className="w-5 h-5" />
             </button>
             <div className="text-center">
-              <img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain mx-auto mb-4" />
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                onClick={playLogoSound}
+                className="w-20 h-20 object-contain mx-auto mb-4 cursor-pointer hover:opacity-90 transition-opacity" 
+              />
               <h3 className="font-tajawal font-bold text-xl mb-3">تثبيت التطبيق على iPhone</h3>
               <div className="text-start space-y-3 font-cairo text-gray-700">
                 <div className="flex items-start gap-3">
