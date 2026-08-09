@@ -9,7 +9,8 @@ import { formatPrice } from '@/lib/utils';
 import { PRODUCT_DETAIL } from '@/constants/testIds';
 import { SOCIAL_LINKS } from '@/constants/social';
 import { toast } from 'sonner';
-import { ShoppingBag, Share2, Copy, Minus, Plus } from 'lucide-react';
+import { ShoppingBag, Share2, Copy, Minus, Plus, Download } from 'lucide-react';
+import { playLogoSound } from '@/lib/sound';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -96,6 +97,38 @@ const ProductDetail = () => {
     const success = await handleAddToCart();
     if (success) {
       navigate('/checkout');
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    const currentImgUrl = product.images[selectedImageIndex]?.url || product.images[0]?.url;
+    if (!currentImgUrl) {
+      toast.error('لا توجد صورة للتنزيل');
+      return;
+    }
+    try {
+      const response = await fetch(currentImgUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${product.name_ar.replace(/\s+/g, '_')}_image_${selectedImageIndex + 1}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      playLogoSound();
+      toast.success('تم تنزيل صورة المنتج بنجاح');
+    } catch (err) {
+      const a = document.createElement('a');
+      a.href = currentImgUrl;
+      a.download = `${product.name_ar}_image.jpg`;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      playLogoSound();
+      toast.success('تم فتح تنزيل صورة المنتج');
     }
   };
 
@@ -390,6 +423,16 @@ const ProductDetail = () => {
                 >
                   <Copy className="w-4 h-4" />
                   نسخ الرابط
+                </button>
+
+                <button
+                  data-testid="download-product-image-btn"
+                  onClick={handleDownloadImage}
+                  className="inline-flex items-center gap-2 bg-burgundy-500/10 text-burgundy-500 hover:bg-burgundy-500 hover:text-white font-cairo font-semibold px-4 py-2 rounded-full transition-all duration-200 hover:scale-105"
+                  title="تنزيل صورة المنتج مع تشغيل نغمة الشعار"
+                >
+                  <Download className="w-4 h-4" />
+                  تنزيل صورة المنتج
                 </button>
               </div>
 

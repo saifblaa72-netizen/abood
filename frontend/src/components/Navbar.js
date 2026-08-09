@@ -6,6 +6,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { NAV } from '@/constants/testIds';
 import { SOCIAL_LINKS } from '@/constants/social';
+import { playLogoSound } from '@/lib/sound';
 
 const Navbar = ({ onCartOpen }) => {
   const { user, logout } = useAuth();
@@ -84,7 +85,9 @@ const Navbar = ({ onCartOpen }) => {
           <Link 
             to="/" 
             data-testid={NAV.logo}
-            className="flex items-center gap-3"
+            onClick={playLogoSound}
+            className="flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer"
+            title="وهيبة فاشن"
           >
             <img 
               src="/logo.png" 

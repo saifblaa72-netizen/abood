@@ -8,6 +8,7 @@ import { AUTH } from '@/constants/testIds';
 import { toast } from 'sonner';
 import { Gift, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
+import { playLogoSound } from '@/lib/sound';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -84,7 +85,8 @@ const Login = () => {
             <img 
               src="/logo.png" 
               alt="وهيبة فاشن" 
-              className="h-24 w-auto object-contain"
+              onClick={playLogoSound}
+              className="h-24 w-auto object-contain cursor-pointer hover:opacity-90 transition-opacity"
             />
           </div>
           <h1 className="text-3xl font-tajawal font-bold text-center mb-8">

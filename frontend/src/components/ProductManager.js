@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Image as ImageIcon, X, Upload, Loader2, Bell, BellOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, X, Upload, Download, Loader2, Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice, categories, sizes, asArray } from '@/lib/utils';
+import { playLogoSound } from '@/lib/sound';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -51,6 +52,7 @@ const ProductManager = () => {
         ? response.data.url 
         : `${process.env.REACT_APP_BACKEND_URL}${response.data.url}`;
       updateImage(index, 'url', fullUrl);
+      playLogoSound();
       toast.success('تم رفع الصورة بنجاح');
     } catch (error) {
       toast.error('فشل رفع الصورة');
@@ -198,6 +200,7 @@ const ProductManager = () => {
         await axios.post(`${API}/products`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        playLogoSound();
         toast.success(`تمت إضافة المنتج بنجاح مع ${validVariants.length} لون/مقاس`);
       }
       setDialogOpen(false);
@@ -218,6 +221,64 @@ const ProductManager = () => {
       fetchProducts();
     } catch (error) {
       toast.error('فشل حذف المنتج');
+    }
+  };
+
+  const handleDownloadProducts = () => {
+    if (!products || products.length === 0) {
+      toast.info('لا توجد منتجات لتنزيلها');
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `wahiba_products_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    playLogoSound();
+    toast.success(`تم تنزيل قائمة المنتجات (${products.length} منتج)`);
+  };
+
+  const handleImportProducts = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const importedData = JSON.parse(text);
+      const items = Array.isArray(importedData) ? importedData : [importedData];
+
+      let successCount = 0;
+      for (const item of items) {
+        if (item.name_ar && item.price) {
+          const payload = {
+            name_ar: item.name_ar,
+            description_ar: item.description_ar || '',
+            category: item.category || 'dresses',
+            price: parseFloat(item.price),
+            original_price: item.original_price ? parseFloat(item.original_price) : null,
+            discount_percentage: item.discount_percentage ? parseFloat(item.discount_percentage) : null,
+            material_ar: item.material_ar || '',
+            is_featured: item.is_featured || false,
+            is_new: item.is_new ?? true,
+            is_on_sale: item.is_on_sale || false,
+            images: item.images?.length ? item.images : [{ url: '/logo.png', alt: '', is_primary: true }],
+            variants: item.variants?.length ? item.variants : [{ color: 'أساسي', color_hex: '#722F37', size: 'M', stock: 10, sku: '' }]
+          };
+          await axios.post(`${API}/products`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          successCount++;
+        }
+      }
+      playLogoSound();
+      toast.success(`تم رفع واستيراد ${successCount} منتج جديد بنجاح`);
+      fetchProducts();
+    } catch (err) {
+      console.error(err);
+      toast.error('فشل رفع/استيراد ملف المنتجات');
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -286,7 +347,7 @@ const ProductManager = () => {
 
   return (
     <Card className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-xl font-tajawal font-bold">إدارة المنتجات ({products.length})</h2>
           {pushInfo && (
@@ -308,14 +369,45 @@ const ProductManager = () => {
             </p>
           )}
         </div>
-        <Button
-          data-testid="admin-add-product-btn"
-          onClick={openAddDialog}
-          className="bg-burgundy-500 hover:bg-burgundy-600"
-        >
-          <Plus className="w-4 h-4 ml-2" />
-          إضافة منتج
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadProducts}
+            title="تنزيل قائمة المنتجات مع الصوت الخاص بالشعار"
+            data-testid="admin-download-products-btn"
+            className="border-gray-300 font-cairo"
+          >
+            <Download className="w-4 h-4 ml-1.5" />
+            تنزيل المنتجات
+          </Button>
+
+          <label
+            htmlFor="import-products-input"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none border border-gray-300 bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 py-2 cursor-pointer font-cairo"
+            title="رفع/استيراد منتجات مع الصوت الخاص بالشعار"
+          >
+            <Upload className="w-4 h-4 ml-1.5" />
+            رفع منتجات
+            <input
+              id="import-products-input"
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleImportProducts}
+              data-testid="admin-import-products-input"
+            />
+          </label>
+
+          <Button
+            data-testid="admin-add-product-btn"
+            onClick={openAddDialog}
+            className="bg-burgundy-500 hover:bg-burgundy-600 text-white font-cairo"
+          >
+            <Plus className="w-4 h-4 ml-1.5" />
+            إضافة منتج
+          </Button>
+        </div>
       </div>
 
       {loading ? (
